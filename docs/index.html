@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="./">
+<script>
+window.APP_BUILD = "R1172.7.1";
+window.APP_HOST_MODE = "static";
+window.appAssetUrl = function(path){
+  const clean = String(path || "").replace(/^\/+/, "");
+  return new URL(clean, new URL(".", document.baseURI)).href;
+};
+</script>
+<title>Orthopedic Hexapod Planning & Simulation</title>
+<link rel="stylesheet" href="./shared.css">
+</head>
+<body>
+<div id="header">
+<div id="title">- SPA - Orthopedic Hexapod Planning & Simulation · R1172.7.1</div>
+<div id="caseRow">Case : <input id="shellCaseName" value="Demo Case, x hard coded !!"></div>
+<div id="menu">
+<a href="#patient" data-workspace="patient">Patient</a> |
+<a href="#frame" data-workspace="frame">Frame</a> |
+<a href="#xray" data-workspace="xray">X-ray</a> |
+<a href="#deformity" data-workspace="deformity">Deformity</a> |
+<a href="#mounting" data-workspace="mounting">Mounting</a> |
+<a href="#phases" data-workspace="phases">Phases</a> |
+<a href="#treatment" data-workspace="treatment">Treatment</a> |
+<a href="#reports" data-workspace="reports">Reports</a>
+</div>
+<hr>
+</div>
+<script src="./shared.js?v=R1172.7.1"></script>
+
+<details style="padding:8px 10px;border-top:1px solid #888;font:12px/1.45 monospace;">
+  <summary>R1172.7.1 · Static-host-compatible browser architecture</summary>
+  <div role="status" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px;">
+Normal Planning: browser JavaScript, temporary PYTHON_COMPAT fixed-duration preview schedule mode.
+Prescription Verification: browser JavaScript.
+Python planner HTTP bridge: retired.
+PREVIEW ONLY: does not certify target attainment or enforce strict daily movement limits.
+Python planner implementation: retained in simulation_ui.py for offline/reference use.
+Completion tolerances and daily limits remain provisional engineering settings.
+SimulationFrameV1: published before on-demand Three.js iframe startup.
+CASE → mechanical parameters: browser JavaScript for active CASE sync; Python translator retained in simulation_ui.py as reference. Initial CASE factory and first-run bootstrap: browser JavaScript. window.currentCase is the only active CASE authority. syncCurrentCase() is a browser-local commit/parameter-translation boundary. IndexedDB and Supabase provide durable recovery; Flask has no CASE mirror or debug-log dependency. Legacy Python/Flask CASE and simulation endpoints retired.
+  </div>
+</details>
+<!-- R1154 browser FK shadow modules: shared.js must load first. -->
+<script src="./mechanics.js?v=R1172.7.1"></script>
+<!-- Browser planner dependency chain. Stable descriptive filenames; keep this order. -->
+<script src="./hardware_spec.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('hardware_spec.js')"></script>
+<script src="./case_mechanics_recovery.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('case_mechanics_recovery.js')"></script>
+<script src="./planner_mechanics.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_mechanics.js')"></script>
+<script src="./planner_candidates.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_candidates.js')"></script>
+<script src="./planner_trajectory.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_trajectory.js')"></script>
+<script src="./treatment_orchestration.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('treatment_orchestration.js')"></script>
+<script src="./case_phase_executor.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('case_phase_executor.js')"></script>
+<script src="./prescription_verification.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('prescription_verification.js')"></script>
+<script src="./case_change_coordinator.js?v=R1172.7.1"></script>
+<script src="./workspace_manager.js?v=R1172.7.1"></script>
+<script src="./patient.js?v=R1172.7.1"></script>
+<script src="./frame.js?v=R1172.7.1"></script>
+<script src="./reconstruction.js?v=R1172.7.1"></script>
+<script src="./reconstruction_synthetic_test.js?v=R1172.7.1"></script>
+<script src="./xray_reconstruction.js?v=R1172.7.1"></script>
+<script src="./case_file_service.js?v=R1172.7.1"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase_case_storage.js?v=R1172.7.1"></script>
+<script src="./connected_case_autosave.js?v=R1172.7.1"></script>
+<script src="./deformity.js?v=R1172.7.1"></script>
+<script src="./mounting.js?v=R1172.7.1"></script>
+<script src="./phases.js?v=R1172.7.1"></script>
+<script src="./treatment.js?v=R1172.7.1"></script>
+<script src="./case_recovery.js?v=R1172.7.1" onerror="window.__CASE_RECOVERY_SCRIPT_R1128_ERROR=true"></script>
+<script src="./diagnostics_manager.js?v=R1172.7.1"></script>
+<script src="./diagnostic_window_manager.js?v=R1172.7.1"></script>
+<script src="./diagnostics_modules.js?v=R1172.7.1"></script>
+<script src="./reports.js?v=R1172.7.1"></script>
+<script src="./app.js?v=R1172.7.1"></script>
+<div id="workspaceHost">SPA Loading...</div>
+<div id="statusBar">Status : <span id="statusText">Ready</span></div>
+<div id="plannerRuntimeDiagnosticPanel" role="status" aria-live="polite"
+     style="font:12px/1.4 monospace; padding:6px 10px; border-top:1px solid #888; overflow-wrap:anywhere;">
+R1172.4 · BROWSER PLANNER · Initializing dependency chain.
+</div>
+<script>
+(function(){
+  const panel=document.getElementById("plannerRuntimeDiagnosticPanel");
+  if(!panel)return;
+  const checks=[
+    ["HardwareSpec",()=>!!window.HardwareSpec],
+    ["HexapodCaseRecovery",()=>!!window.HexapodCaseRecovery],
+    ["HexapodMechanics",()=>!!window.HexapodMechanics],
+    ["HexapodPlannerCandidates",()=>!!window.HexapodPlannerCandidates],
+    ["HexapodPlannerTrajectory",()=>!!window.HexapodPlannerTrajectory],
+    ["HexapodTreatmentOrchestration",()=>!!window.HexapodTreatmentOrchestration],
+    ["HexapodCasePhaseExecutor",()=>!!window.HexapodCasePhaseExecutor],
+    ["HexapodPrescriptionVerification",()=>!!window.HexapodPrescriptionVerification]
+  ];
+  function render(){
+    const missing=checks.filter(item=>!item[1]()).map(item=>item[0]);
+    const loadErrors=window.__PLANNER_DEP_LOAD_ERRORS||[];
+    if(missing.length===0 && loadErrors.length===0){
+      panel.textContent="R1172.4 · BROWSER PLANNER READY · Normal Planning: browser JavaScript · TEMPORARY PYTHON_COMPAT preview schedule mode · Prescription Verification: browser JavaScript · Python planner HTTP bridge retired";
+      panel.dataset.runtimeState="ready";
+    }else{
+      const details=[];
+      if(loadErrors.length)details.push("Script URL failures: "+loadErrors.join(", "));
+      if(missing.length)details.push("Missing APIs: "+missing.join(", "));
+      panel.textContent="R1172.4 · BROWSER PLANNER NOT READY · "+details.join(" · ");
+      panel.dataset.runtimeState="error";
+    }
+  }
+  render();
+  window.addEventListener("load",render,{once:true});
+})();
+</script>
+
+<div id="caseChangeDiagnosticPanel" role="status" aria-live="polite"
+     style="font:12px/1.4 monospace; padding:6px 10px; border-top:1px solid #aaa; overflow-wrap:anywhere;"
+     data-event-state="initializing">
+R1145.2 · CASE CHANGE EVENTS · Connected WIP autosave / Standalone IndexedDB
+</div>
+<script>
+(function () {
+  const panel = document.getElementById("caseChangeDiagnosticPanel");
+  if (!panel) return;
+
+  function render() {
+    const api = window.CaseChangeCoordinator;
+    if (!api) {
+      panel.textContent = "R1145.2 CASE CHANGE EVENTS · Coordinator unavailable.";
+      panel.dataset.eventState = "error";
+      return;
+    }
+    const d = api.getDiagnostics();
+    const c = d.counters;
+    panel.textContent =
+      "R1145.2 CASE EVENTS · " +
+      "Mode: " + d.operatingMode +
+      " · Events: " + c.emitted +
+      " · Suppressed: " + c.suppressed +
+      " · Rejected: " + c.rejected +
+      " · Transactions: " + d.transactionDepth +
+      " · Persistence: " + (d.persistenceConnected
+        ? (d.operatingMode === "connected" ? "CONNECTED WIP ADAPTER READY" : "STANDALONE INDEXEDDB ACTIVE")
+        : "NOT CONNECTED / INACTIVE");
+    panel.dataset.eventState = c.lastError ? "warning" : "ready";
+  }
+
+  window.addEventListener("DOMContentLoaded", render);
+  window.addEventListener("case-change-diagnostics-updated", render);
+  window.addEventListener("application-operating-mode-changed", render);
+  render();
+})();
+</script>
+<div id="caseRecoveryDiagnosticPanel" role="status" aria-live="polite"
+     style="font:12px/1.4 monospace; padding:6px 10px; border-top:1px solid #aaa; overflow-wrap:anywhere;"
+     data-transition="idle">
+R1143 · LOCAL INDEXEDDB RECOVERY MONITOR · Active only in Standalone Mode.
+</div>
+<script>
+(function () {
+  const panel = document.getElementById("caseRecoveryDiagnosticPanel");
+  if (!panel) return;
+  window.addEventListener("DOMContentLoaded", function () {
+    if (window.__CASE_RECOVERY_SCRIPT_R1128_ERROR) {
+      panel.textContent = "R1143 RECOVERY SCRIPT FAILED TO LOAD. Check deployed /case_recovery.js filename/path and deployment.";
+    } else if (!window.__CASE_RECOVERY_SCRIPT_R1128_LOADED) {
+      panel.textContent = "R1143 RECOVERY SCRIPT DID NOT EXECUTE. Check browser console for a script parse/runtime error or stale cached app.";
+    }
+  }, { once: true });
+})();
+</script>
+</body>
+</html>

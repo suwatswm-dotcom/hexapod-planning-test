@@ -1,0 +1,196 @@
+<h2>Patient</h2>
+<!-- R1146.8 — Patient workspace with developer-only repository, runtime and planner diagnostics relocated to global Developer Diagnostics. -->
+
+<div class="mountingCard">
+
+<h3>Patient Information</h3>
+
+<div class="mountingRow">
+<div class="mountingLabel">Patient Name</div>
+<input id="patient_name" type="text">
+<div></div><div></div><div></div><div></div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">Patient ID</div>
+<input id="patient_id" type="text">
+<div></div><div></div><div></div><div></div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">Hospital</div>
+<input id="hospital" type="text">
+<div></div><div></div><div></div><div></div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">Surgeon</div>
+<input id="surgeon" type="text">
+<div></div><div></div><div></div><div></div>
+</div>
+
+</div>
+
+
+<div class="mountingCard">
+
+<h3>Case Information</h3>
+
+<div class="mountingRow">
+<div class="mountingLabel">Case Name</div>
+<input id="case_name" type="text">
+<div></div><div></div><div></div><div></div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">Planner Mode</div>
+<input id="planner_mode" type="text" readonly>
+<div></div><div></div><div></div><div></div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">Case Created</div>
+<input id="case_created" type="text" readonly>
+<div></div><div></div><div></div><div></div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">Case Modified</div>
+<input id="case_modified" type="text" readonly>
+<div></div><div></div><div></div><div></div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">File Saved</div>
+<input id="file_saved" type="text" readonly>
+<div></div><div></div><div></div><div></div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">Version</div>
+<input id="version" type="text" readonly>
+<div></div><div></div><div></div><div></div>
+</div>
+
+</div>
+
+
+<div class="mountingCard">
+
+<h3>Notes</h3>
+
+<textarea
+id="notes"
+rows="6"
+></textarea>
+
+</div>
+
+
+
+
+
+<div class="mountingCard" id="supabaseCaseStorageCard">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <h3 id="r1145ConnectedModeHeading" style="margin:0;padding:6px 10px;border-radius:6px;">Server Connected Mode — Supabase Cloud Cases</h3>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap;">
+      <input type="checkbox" id="r1143ShowStandalone"> Switch to Standalone…
+    </label>
+  </div>
+  <p style="margin:0 0 10px;color:#475569;">Connects to the Supabase project configured below. Stores authenticated cloud cases, immutable revisions, and AP/LAT original images plus annotations. This is separate from local recovery and portable ZIP export.</p>
+  <label for="supabaseProjectUrl" style="display:block;font-weight:600;margin:8px 0 4px;">Supabase Project URL</label>
+  <input id="supabaseProjectUrl" type="url" value="" placeholder="https://your-project.supabase.co" autocomplete="url" style="width:100%;padding:8px;box-sizing:border-box;">
+  <label for="supabasePublishableKey" style="display:block;font-weight:600;margin:8px 0 4px;">Publishable / anon key (never service-role)</label>
+  <input id="supabasePublishableKey" type="password" placeholder="Supabase publishable key" autocomplete="off" style="width:100%;padding:8px;box-sizing:border-box;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:8px;">
+    <div><label for="supabaseEmail" style="display:block;font-weight:600;margin-bottom:4px;">Account email</label><input id="supabaseEmail" type="email" autocomplete="username" style="width:100%;padding:8px;box-sizing:border-box;"></div>
+    <div><label for="supabasePassword" style="display:block;font-weight:600;margin-bottom:4px;">Password</label><input id="supabasePassword" type="password" autocomplete="current-password" style="width:100%;padding:8px;box-sizing:border-box;"></div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+    <button type="button" id="supabaseSignInButton">Sign in</button>
+    <button type="button" id="supabaseSignOutButton">Sign out</button>
+    <button type="button" id="supabaseRefreshCasesButton">Refresh cloud list</button>
+  </div>
+  <label for="supabaseCaseSelect" style="display:block;font-weight:600;margin:12px 0 4px;">Saved cloud cases</label>
+  <select id="supabaseCaseSelect" style="width:100%;padding:8px;box-sizing:border-box;"><option value="">Sign in, then refresh list…</option></select>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+    <button type="button" id="supabaseCreateCaseButton">Save as NEW cloud case</button>
+    <button type="button" id="supabaseSaveRevisionButton">Save NEW revision to selected case</button>
+    <button type="button" id="supabaseOpenCaseButton">Open current revision</button>
+  </div>
+  <label for="supabaseRevisionSelect" style="display:block;font-weight:600;margin:12px 0 4px;">Revision history for selected case</label>
+  <select id="supabaseRevisionSelect" disabled style="width:100%;padding:8px;box-sizing:border-box;"><option value="">Choose a revision…</option></select>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+    <button type="button" id="supabaseRefreshRevisionHistoryButton">Refresh revision history</button>
+    <button type="button" id="supabaseOpenRevisionButton">Open selected revision</button>
+  </div>
+  <!-- R1005: deliberately disposable-project-only destructive control. -->
+  <div id="supabaseDeleteCasePanel" style="margin-top:14px;padding:12px;border:2px solid #b91c1c;border-radius:8px;background:#fff7f7;">
+    <h4 style="margin:0 0 8px;color:#991b1b;">Danger zone — Delete entire cloud case</h4>
+    <p style="margin:0 0 8px;font-size:13px;">Permanently removes the selected case, all its revisions, asset metadata, and associated Storage objects. The patient record is preserved. Permanent deletion is restricted to the designated disposable test project. The active project identity is checked in code; changing the URL field alone cannot unlock this operation.</p>
+    <label style="display:flex;gap:8px;align-items:flex-start;font-size:13px;margin:8px 0;"><input id="supabaseDeleteDisposableAck" type="checkbox" style="margin-top:2px;"> <span>I confirm I am using the disposable test database and a synthetic test case.</span></label>
+    <button type="button" id="supabaseDeleteCaseButton" disabled style="background:#991b1b;color:white;">Delete entire selected case…</button>
+    <button type="button" id="supabaseReadDeletionStatusButton">Check deletion status (selected or recently deleted case)</button>
+    <div id="supabaseDeleteCaseStatus" role="status" aria-live="polite" style="margin-top:8px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;">LOCKED · Sign in to the designated disposable test project and select a synthetic case.</div>
+  </div>
+  <div id="supabaseCaseStorageStatus" role="status" aria-live="polite" style="margin-top:8px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;">NOT CONNECTED · Enter the configured Supabase project URL and publishable key, then sign in.</div>
+</div>
+
+<div class="mountingCard" id="r1141OperatingModeCard" hidden style="border:2px solid #64748b;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+    <h3 id="r1145StandaloneModeHeading" style="margin:0;padding:6px 10px;border-radius:6px;">Standalone Mode — Local Browser Storage</h3>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;white-space:nowrap;">
+      <input type="checkbox" id="r1143ShowConnected"> Switch to Connected…
+    </label>
+  </div>
+  <p style="margin:0 0 10px;color:#475569;">Use Standalone Mode only when you intentionally want browser-local recovery instead of a Supabase working copy. This does not change the application’s existing server communication.</p>
+  <label for="r1141StandaloneAck" style="display:flex;gap:8px;align-items:flex-start;margin:10px 0;font-size:13px;">
+    <input id="r1141StandaloneAck" type="checkbox" style="margin-top:2px;">
+    <span><strong>Local data and privacy acknowledgement:</strong> I understand that complete recovery snapshots, including CASE data and AP/LAT images and annotations, are stored in this browser profile using IndexedDB. They are not uploaded to Supabase by this local recovery process, but other people who can access this same browser profile/device may be able to access them. Clearing browser/site data, profile loss, or device failure may destroy them. I will use portable ZIP export for an independent backup and will not use Standalone Mode on a shared or public browser for sensitive patient data.</span>
+  </label>
+  <button type="button" id="r1141StandaloneButton" disabled>Enter Standalone Mode</button>
+  <button type="button" id="r1141ExitStandaloneButton" hidden>Exit Standalone Mode</button>
+  <div id="r1141ModeStatus" role="status" aria-live="polite" style="margin-top:8px;font-size:13px;white-space:pre-wrap;">R1142 · STANDALONE MODE INACTIVE · Sign in above for Connected Mode, or explicitly enable local-only recovery below.</div>
+</div>
+
+<div class="mountingCard" id="r886CaseFileCard">
+  <h3>Case File</h3>
+  <p style="margin:0 0 10px;color:#475569;">Open or export a portable case ZIP containing CASE data, AP/LAT images, and annotations. Local autosave is recovery support; it is not a portable backup.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <button type="button" id="r914NewCaseButton" style="font-weight:700;">New Case</button>
+    <button type="button" id="r887OpenCaseButton">Open Case</button>
+    <button type="button" id="r887SaveCaseButton">Save Case</button>
+    <input type="file" id="r887OpenCaseFile" accept=".zip,application/zip,application/x-zip-compressed" style="display:none">
+  </div>
+  <div id="r887CaseFileStatus" role="status" aria-live="polite" style="margin-top:8px;font-size:13px;white-space:pre-wrap;">R887 — READY · Open a portable case ZIP or save a portable ZIP to device storage.</div>
+</div>
+
+
+<!-- R913 Local Saved Cases UI removed by R5. Repository code and existing IndexedDB records are intentionally preserved. -->
+
+<!-- R924 — Supabase named-case storage. Separate from portable ZIP and local IndexedDB. -->
+<!-- R1146.6: R909 Local Case Repository diagnostics moved to global Developer Diagnostics. -->
+
+<div id="buttons">
+
+<button id="nextButton">
+
+Next
+
+</button>
+
+</div>
+
+<hr>
+
+<h3>
+
+Developer Dashboard
+
+</h3>
+
+<!-- R1146.6: Debug Log and Planner Validation are presented in global Developer Diagnostics. -->
+<!-- R1146.7: Current Case Inspector moved to global Developer Diagnostics. -->
+
+<!-- R1146.6: WorkspaceManager Snapshot is now shown in global Runtime / Debug Diagnostics. -->
+<script src="./patient.js"></script>

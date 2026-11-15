@@ -1,0 +1,1170 @@
+<!-- july 2,2026.   -->
+
+<div id="hexapod-app-container" style="width:100%; max-width:1100px; margin:0 auto; font-family:-apple-system, BlinkMacSystemFont, sans-serif; background:#f8fafc; padding:12px; border:1px solid #cbd5e1; border-radius:12px;">
+
+    <div style="display:grid; grid-template-columns: 1.3fr 1fr; gap:12px;">
+        <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:12px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+                <div style="font-size:11px; font-weight:700; color:#1e293b; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Orthopaedic Kinematics Simulator (Fixed Bone View)</div>
+
+
+                <svg id="svg3d" viewBox="0 0 500 460" style="width:100%; height:auto; background:#0f172a; border-radius:8px;"></svg>
+            </div>
+
+            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 12px; margin-top:8px; display:flex; flex-direction:column; gap:8px;">
+                <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px;">
+                    <div style="display:flex; gap:4px;">
+                        <button onclick="window.prevDay()" style="padding:6px 10px; font-size:12px; font-weight:600; cursor:pointer; background:#fff; border:1px solid #cbd5e1; border-radius:6px;">&lt;</button>
+                        <button id="playBtn" onclick="window.togglePlay()" style="padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; background:#2563eb; color:#fff; border:none; border-radius:6px;">Play</button>
+                        <button onclick="window.nextDay()" style="padding:6px 10px; font-size:12px; font-weight:600; cursor:pointer; background:#fff; border:1px solid #cbd5e1; border-radius:6px;">&gt;</button>
+                        <button onclick="window.resetToDayZero()" style="font-size:11px; padding:5px 10px; cursor:pointer; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:700; margin-left:auto;">Day0</button>
+                        <button onclick="window.saveCase()"style="font-size:11px;padding:5px 10px;cursor:pointer;background:#16a34a;color:white;border:none;border-radius:6px;font-weight:700;">Save Case</button>
+                        <button onclick="document.getElementById('caseLoader').click()"style="  font-size:11px; padding:5px 10px; cursor:pointer; background:#2563eb; color:white; border:none; border-radius:6px;font-weight:700;"> Load Case</button>
+                        <input id="caseLoader" type="file"accept=".json" style="display:none"onchange="window.loadCase(event)">
+
+                        <span style="font-size:11px;font-weight:600;margin-left:8px;">
+                            Case:
+                        </span>
+                        <input id="caseNameBox" value="Demo_Case" style="width:140px;font-size:11px; padding:4px;border:1px solid #cbd5e1;border-radius:4px;"onchange="window.updateCaseName()"/>
+
+
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; flex-grow:1; max-width:260px;">
+                        <span style="font-weight:700; color:#1e293b; font-size:13px; min-width:55px;">Day Lock: <span id="dayVal" style="color:#2563eb;">0</span></span>
+                        <input type="range" id="daySlider" min="0" max="__TOTAL_DAYS__" value="0" oninput="window.setDay(this.value)" style="flex-grow:1; cursor:pointer; accent-color:#2563eb;">
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:8px; background:#f8fafc; padding:8px 12px; border-radius:8px; font-size:12px; display:grid; grid-template-columns:1fr 1fr; gap:10px; border:1px solid #e2e8f0;">
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <div style="display:flex; justify-content:space-between; font-weight:600;">
+                        <span>Yaw:</span><span id="yawVal" style="color:#2563eb;">°</span>
+                    </div>
+                    <input type="range" id="camYaw" min="-180" max="180" value="0" oninput="window.updateCamera()" style="width:100%;">
+                </div>
+                <div style="display:flex; flex-direction:column; gap:2px;">
+                    <div style="display:flex; justify-content:space-between; font-weight:600;">
+                        <span>Pitch:</span><span id="pitchVal" style="color:#2563eb;">°</span>
+                    </div>
+                    <input type="range" id="camPitch" min="-90" max="90" value="0" oninput="window.updateCamera()" style="width:100%;">
+                </div>
+
+            </div>
+            
+            <div style="margin-bottom:10px; display:flex; flex-wrap:wrap; gap:6px;">
+                    <button onclick="window.snapView(0, 0)" style="font-size:11px; padding:5px 10px; cursor:pointer; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px;">Front View (AP)</button>
+                    <button onclick="window.snapView(-90, 0)" style="font-size:11px; padding:5px 10px; cursor:pointer; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px;">Lat View (ML)</button>
+                    <button onclick="window.snapView(0, 90)" style="font-size:11px; padding:5px 10px; cursor:pointer; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px;">Axial Top-Down</button>
+                    <button onclick="window.snapView(-45, -25)" style="font-size:11px; padding:5px 10px; cursor:pointer; background:#e2e8f0; border:1px solid #94a3b8; border-radius:6px;">Isometric</button>
+            </div>
+
+                <div id="metrics-panel" style="font-size:11px; font-family:monospace; background:#0f172a; color:#38bdf8; padding:6px 10px; border-radius:6px; text-align:left; white-space:pre-wrap; line-height:1.4;">
+                    Data Loading...
+                </div>
+
+
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:10px;">
+                <div style="font-size:11px; font-weight:700; color:#e11d48; margin-bottom:4px; text-transform:uppercase;">SAGITTAL DISTAL BONE PROFILE (AP CHART)</div>
+                <svg id="svgSag" viewBox="0 0 200 200" style="width:100%; max-height:185px; background:#fff; border:1px solid #f1f5f9; border-radius:6px;"></svg>
+            </div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:10px;">
+                <div style="font-size:11px; font-weight:700; color:#2563eb; margin-bottom:4px; text-transform:uppercase;">CORONAL DISTAL BONE PROFILE (ML CHART)</div>
+                <svg id="svgCor" viewBox="0 0 200 200" style="width:100%; max-height:185px; background:#fff; border:1px solid #f1f5f9; border-radius:6px;"></svg>
+            </div>
+            <div style="background:#fff; border:1px solid #e2e8f0; border-radius:10px; padding:10px;">
+                <div style="font-size:11px; font-weight:700; color:#7c3aed; margin-bottom:4px; text-transform:uppercase;">AXIAL DISTAL BONE TRANSLATION PATHWAY</div>
+                <svg id="svgAxi" viewBox="0 0 200 200" style="width:100%; max-height:185px; background:#fff; border:1px solid #f1f5f9; border-radius:6px;"></svg>
+            </div>
+        </div>
+    </div>
+    <div id="debug-panel"style="margin-top:10px;padding:8px;border:1px solid #999;background:#f8f8f8; color:#000000; font-family:monospace;font-size:11px;height:50px; overflow-y:auto; white-space:pre-wrap;">
+        <b>Debug Console..mainly for renderFrame()..dbg() msg before it, will be cleared!! </b><br>
+    </div>
+    <div id="event-log". style="margin-top:8px; padding:8px;border:1px solid #999;background:#ffffff; color:#000000; font-family:monospace;font-size:11px;height:180px;overflow-y:auto; white-space:pre-wrap;">
+        <b>Event Log ..for debug msg before renderFrame() </b><br>
+    </div>
+    
+
+
+    <div id="prescription-panel"style=" margin-top:8px; font-size:11px; font-family:monospace;background:#111827; color:#f59e0b; padding:6px 10px; border-radius:6px;text-align:left;white-space:pre-wrap;line-height:1.4;  min-height:90px; ">
+        Case Status
+    </div>
+    <div id="case-info-panel"style=" margin-top:8px; font-size:11px;  font-family:monospace; background:#0f172a;color:#38bdf8;padding:6px 10px; border-radius:6px; text-align:left;white-space:pre-wrap;line-height:1.4;min-height:70px;">
+        Case Information
+    </div>
+    <div id="case-params-panel"style="margin-top:6px;padding:6px;font-size:11px;font-family:monospace;background:#0f172a;color:#38bdf8;border-radius:6px;white-space:pre-wrap;">
+    </div>
+    <div id="loadedFileDisplay">
+        Loaded File: none
+    </div>
+
+</div>
+
+
+
+<script>
+//debug helper functions
+
+window.plannerDbg = function(msg){
+    let p = document.getElementById("planner-panel");
+    p.innerHTML += msg + "<br>";
+    p.scrollTop = p.scrollHeight;
+};
+
+window.logEvent = function(msg){
+    let panel = document.getElementById("event-log");
+    panel.innerHTML += msg + "<br>";
+    panel.scrollTop = panel.scrollHeight;
+};   
+
+
+
+window.dbg = function(msg) {
+    let panel = document.getElementById("debug-panel");
+    panel.innerHTML += msg + "<br>";
+    panel.scrollTop = panel.scrollHeight;
+};
+
+
+window.dbgClear = function() {
+    document.getElementById("debug-panel").innerHTML =
+        "<b>Debug Console..mainly for renderFrame()..dbg() msg before it, will be cleared!! </b><br>";
+};
+window.dbgObj = function(name,obj){
+    dbg(name);
+    for(let k in obj){
+        dbg("   " + k + " = " + obj[k]);
+    }
+};
+window.dbgMat = function(name,m){
+    dbg(name);
+    for(let r=0;r<m.length;r++){
+        dbg(
+            m[r].map(v=>Number(v).toFixed(3)).join("   ")
+        );
+    }
+};
+
+window.dbgVec = function(name,v){
+    dbg(
+        name + " = (" + v.map(x=>Number(x).toFixed(2)).join(", ") + ")"
+    );
+};
+
+window.Viewer = {
+
+    case: null,
+
+    dataOut: [],
+    traceOut: [],
+    boundsOut: [],
+    colorMap: [],
+    caseParams: null,
+
+    currentDay: 0,
+
+    installCase(caseData) {
+
+    logEvent("===== Viewer.installCase() =====");
+
+    logEvent("typeof caseData = " + typeof caseData);
+
+    if(caseData === undefined){
+        logEvent("caseData is undefined");
+        return;
+    }
+
+    if(caseData === null){
+        logEvent("caseData is null");
+        return;
+    }
+
+    logEvent("caseData exists");
+
+    logEvent(
+        "Keys = " +
+        Object.keys(caseData).join(", ")
+    );
+        
+        
+        
+        this.case = caseData;
+        
+logEvent(
+    "simulation keys = " +
+    Object.keys(caseData.simulation).join(", ")
+);
+
+logEvent(
+    "days exists = " +
+    ("day" in caseData.simulation)
+);
+
+logEvent(
+    "simulation.day = " +
+    caseData.simulation.days
+);        
+        
+
+        this.dataOut = caseData.simulation.days;
+        
+logEvent("typeof this.dataOut = " + typeof this.dataOut);
+
+logEvent(
+    "Array? " +
+    Array.isArray(this.dataOut)
+);
+
+logEvent(
+    "length property = " +
+    this.dataOut.length
+);
+
+logEvent(
+    "First element type = " +
+    typeof this.dataOut[0]
+);
+
+logEvent(
+    "First element keys = " +
+    Object.keys(this.dataOut[0]).join(", ")
+);        
+        
+        
+        
+        this.traceOut = caseData.simulation.trace;
+        this.boundsOut = caseData.simulation.bounds;
+        this.colorMap = caseData.simulation.colorMap;
+
+        this.caseParams = caseData.parameters;
+
+        this.currentDay = 0;
+
+        logEvent(
+            "Viewer installed: " +
+            caseData.metadata.caseName
+        );
+        
+        logEvent(
+            "Days = " +
+            this.dataOut.length
+        );
+    },
+
+    day(dayIndex){
+        return this.dataOut[dayIndex];
+    },
+    
+    trace() {return this.traceOut;},
+
+    bounds() {return this.boundsOut;},
+
+    colors() {return this.colorMap;},
+
+    params() {return this.caseParams},
+       
+    metadata() {return this.case.metadata; },
+
+    prescription() {return this.case.prescription; },
+
+};
+
+// alert("script updated. # 12");
+
+//---------------
+window.viewerInstance = (window.viewerInstance || 0) + 1;
+
+const marker = document.createElement("div");
+marker.style.position = "fixed";
+marker.style.top = "10px";
+marker.style.right = "10px";
+marker.style.background = "yellow";
+marker.style.padding = "6px";
+marker.style.fontSize = "20px";
+marker.style.zIndex = "9999";
+marker.innerHTML = "update #1" + window.viewerInstance;
+
+document.body.appendChild(marker);
+//---------------
+
+//window.dataOut = __DATA_OUT_; // remove last underscore  to prevent replacement
+//window.traceOut = __TRACE_OUT_;
+//window.boundsOut = __BOUNDS_OUT_;
+//window.colorMap = __COLOR_MAP_;
+//const TOTAL_DAYS = __TOTAL_DAYS__;
+window.TOTAL_DAYS = 0;
+//window.caseParams = __CASE_PARAMS_;
+//window.loadedCaseFromPython =__CURRENT_CASE__; // everything in here
+window.loadedCaseFromPython = null;
+
+Viewer.currentDay = 0;
+window.playing = false;
+window.playInterval = null;
+
+window.k3d = { "cx": 250, "cy": 220, "scale": 1.4 }; // originsl
+window.cosA = 1; window.sinA = 0; window.cosE = 1; window.sinE = 0;
+
+/*
+window.currentCase = {
+
+    metadata : {
+        caseName : "Demo Case",
+        planner : "Interpolation",
+        created : new Date().toISOString(),
+        version : 1
+    },
+
+    parameters : window.loadedCaseFromPython.parameters,
+
+    prescription : window.loadedCaseFromPython.prescription,
+
+    planner_result : window.loadedCaseFromPython.planner_result,
+
+    simulation : {
+
+        days : window.dataOut,
+
+        trace : window.traceOut,
+
+        bounds : window.boundsOut,
+
+        colorMap : window.colorMap
+    }
+};
+*/
+
+//window.currentCase = window.loadedCaseFromPython;
+
+window.updateCaseName = function(){
+
+    const name = document.getElementById("caseNameBox").value;
+
+    Viewer.case.metadata.caseName = name;
+
+    window.logEvent("Case name set to: " + name);
+};
+
+
+window.saveCase = function(){
+
+    window.logEvent("saveCase entered");
+
+    window.logEvent("Save defect X = " + Viewer.params().CLINICAL_OFFSET[0]);
+
+    
+    window.logEvent("Saving defect X = " + Viewer.params().CLINICAL_OFFSET[0]);
+
+   
+    const jsonText = JSON.stringify(Viewer.case,null, 2);
+
+    const blob =
+        new Blob(
+            [jsonText],
+            {
+                type : "application/json"
+            }
+        );
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const a =
+        document.createElement("a");
+
+    const caseName =
+        document
+            .getElementById(
+                "caseNameBox"
+            )
+            .value
+            .replace(/\s+/g,"_");
+
+
+    a.href = url;
+
+    a.download =
+        caseName + ".json";
+
+    document.body.appendChild(a);
+
+    a.click();
+
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+
+    window.logEvent(
+        "Case saved: " +
+        caseName +
+        ".json"
+    );
+};
+
+window.updateCaseInfo = function(){
+
+    const p = Viewer.params();
+    if(!p) return;
+
+    window.logEvent(
+        "Loaded mount: " +
+        p.BONE_PROX_ORIGIN.join(", ")
+    );
+
+    document.getElementById("case-params-panel").innerHTML =
+
+        "Case Parameters<br><br>" +
+
+        "Mount: " +
+        p.BONE_PROX_ORIGIN.join(", ") + "<br>" +
+
+        "Mount Rot: " +
+        p.R_PROX_ANGLES.join(", ") + "<br>" +
+
+        "Defect: " +
+        p.CLINICAL_OFFSET.join(", ") + "<br>" +
+
+        "Defect Rot: " +
+        p.CLINICAL_ANGLES.join(", ");
+};
+
+window.loadCase = function(event){
+
+    const file = event.target.files[0];
+    if(!file) return;
+
+    window.loadedFileName = file.name;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+
+        try{
+
+            const loadedCase = JSON.parse(e.target.result);
+
+            window.logEvent(
+                "Loaded keys: " +
+                Object.keys(loadedCase).join(", ")
+            );
+
+            // -------------------------------------------------
+            // Install the case into Viewer
+            // -------------------------------------------------
+            Viewer.installCase(loadedCase);
+            //window.currentCase = Viewer.case;     // temporary compatibility
+            
+            window.logEvent(
+                "Loaded defect X = " +
+                Viewer.params().CLINICAL_OFFSET[0]
+            );
+
+            window.updateCaseInfo();
+
+            document.getElementById("loadedFileDisplay").innerHTML =
+                "Loaded File: " + file.name;
+
+            document.getElementById("caseNameBox").value =
+                Viewer.metadata().caseName;
+
+            document.getElementById("daySlider").max =
+                Viewer.dataOut.length - 1;
+
+            Viewer.currentDay = 0;
+
+            document.getElementById("daySlider").value = 0;
+
+            window.logEvent(
+                "Loaded case: " +
+                Viewer.metadata().caseName
+            );
+
+            window.logEvent(
+                "Days loaded: " +
+                Viewer.dataOut.length
+            );
+
+            window.logEvent(
+                "Trace loaded: " +
+                Viewer.traceOut.length
+            );
+
+            renderFrame();
+
+        }
+        catch(err){
+
+            window.logEvent("ERROR loading case");
+            window.logEvent(err.toString());
+
+        }
+
+    };
+
+    reader.readAsText(file);
+
+};
+
+
+window.snapView = function(yaw, pitch) {
+    document.getElementById("camYaw").value = yaw;
+    document.getElementById("camPitch").value = pitch;
+    window.updateCamera();
+};
+
+window.resetToDayZero = function() {
+    if(window.playing) window.togglePlay();
+    window.setDay(0);
+};
+
+
+window.updateCamera = function() {
+    let yawDeg = parseFloat(document.getElementById("camYaw").value);
+    let pitchDeg = parseFloat(document.getElementById("camPitch").value);
+    document.getElementById("yawVal").innerText = yawDeg + "°";
+    document.getElementById("pitchVal").innerText = pitchDeg + "°";
+
+    window.cosA = Math.cos(yawDeg * Math.PI / 180);
+    window.sinA = Math.sin(yawDeg * Math.PI / 180);
+    window.cosE = Math.cos(pitchDeg * Math.PI / 180);
+    window.sinE = Math.sin(pitchDeg * Math.PI / 180);
+    window.renderFrame();
+};
+
+function getDepthAndProj_old(pt) {
+    // Coordinate matrix mapping to perspective projection coordinates
+    let xRot = pt[0] * window.cosA - pt[1] * window.sinA;
+    let yRot = pt[0] * window.sinA + pt[1] * window.cosA;
+    let zRot = pt[2] * window.cosE - yRot * window.sinE;
+    return {
+        "depth": yRot,  // Depth configuration along projection plane vector
+        "x": window.k3d.cx + xRot * window.k3d.scale,
+        "y": window.k3d.cy - zRot * window.k3d.scale
+    };
+}
+
+function getDepthAndProj(pt) {
+
+    // Rotate about Z (yaw)
+    let xRot = pt[0] * window.cosA - pt[1] * window.sinA;
+    let yRot = pt[0] * window.sinA + pt[1] * window.cosA;
+
+    // Rotate about X (pitch)
+    let depthRot = yRot * window.cosE + pt[2] * window.sinE;
+    let zRot     = pt[2] * window.cosE - yRot * window.sinE;
+
+    return {
+        depth: -depthRot,
+        x: window.k3d.cx + xRot * window.k3d.scale,
+        y: window.k3d.cy - zRot * window.k3d.scale
+    };
+}
+
+window.setDay = function(day) {
+
+    Viewer.currentDay = Number(day);
+
+    document.getElementById("dayVal").innerText =
+        Viewer.currentDay;
+
+    document.getElementById("daySlider").value =
+        Viewer.currentDay;
+
+    window.renderFrame();
+};
+
+window.nextDay = function() {
+
+    if(Viewer.currentDay < window.TOTAL_DAYS)
+        window.setDay(Viewer.currentDay + 1);
+    else if(window.playing)
+        window.togglePlay();
+};
+
+window.prevDay = function() {
+
+    if(Viewer.currentDay > 0)
+        window.setDay(Viewer.currentDay - 1);
+};
+
+window.togglePlay = function() {
+    window.playing = !window.playing;
+    const btn = document.getElementById("playBtn");
+    if(window.playing) {
+        btn.innerText = "Pause";
+        btn.style.background = "#dc2626";
+        window.playInterval = setInterval(window.nextDay, 200);
+    } else {
+        btn.innerText = "Play";
+        btn.style.background = "#2563eb";
+        clearInterval(window.playInterval);
+    }
+};
+//--------------- RENDER ---------------
+window.renderFrame = function() {
+
+    const day = Viewer.currentDay;
+
+    if(day !== window.lastDebugDay){
+        dbgClear();
+        window.lastDebugDay = day;
+    }
+
+    window.dbg(
+        "Case JSON size = " +
+        JSON.stringify(Viewer.case).length
+    );
+
+    dbg("Day " + day);
+
+logEvent("Viewer.case exists = " + (Viewer.case ? "YES" : "NO"));
+
+logEvent(
+    "simulation exists = " +
+    (Viewer.case && Viewer.case.simulation ? "YES" : "NO")
+);
+
+logEvent(
+    "days exists = " +
+    (
+        Viewer.case &&
+        Viewer.case.simulation &&
+        Viewer.case.simulation.days
+            ? "YES"
+            : "NO"
+    )
+);
+
+
+
+    const d = Viewer.day(day);
+
+    const trace = Viewer.trace();
+    const bounds = Viewer.bounds();
+    const colors = Viewer.colors();
+    const params = Viewer.params();
+    const metadata = Viewer.metadata();
+    const prescription = Viewer.prescription();
+   
+    const p = document.getElementById("prescription-panel");
+    
+    if (p && d.lengths) {
+    
+        p.innerHTML =
+    
+            "<b>CASE STATUS</b><br><br>" +
+    
+            "Tx=" + Number(d.tx).toFixed(2) +
+            "  Ty=" + Number(d.ty).toFixed(2) +
+            "  Tz=" + Number(d.tz).toFixed(2) +
+            "<br>" +
+    
+            "Rx=" + Number(d.rx).toFixed(2) +
+            "  Ry=" + Number(d.ry).toFixed(2) +
+            "  Rz=" + Number(d.rz).toFixed(2) +
+            "<br><br>" +
+    
+            "S1=" + d.lengths[0] +
+            "  S2=" + d.lengths[1] +
+            "  S3=" + d.lengths[2] +
+            "<br>" +
+    
+            "S4=" + d.lengths[3] +
+            "  S5=" + d.lengths[4] +
+            "  S6=" + d.lengths[5] +
+            "<br><br>" +
+    
+            "Tmag=" +
+            Number(d.translation_mag).toFixed(2);
+    }
+
+    const info =document.getElementById( "case-info-panel");
+    
+    if(info){
+    
+        info.innerHTML =
+    
+            "<b>CASE INFO</b><br><br>" +
+            "Current Day : " + d.day + "<br>" +
+            "Total Days : " + (Viewer.dataOut.length - 1) + "<br>" +
+            "Case : " + metadata.caseName + "<br>" +
+            "Planner : " + metadata.planner            
+            
+    }
+
+    const svg3d = document.getElementById("svg3d");
+    if (!svg3d) return;
+
+    let renderQueue = [];
+
+
+
+
+// ======================================================
+// PROXIMAL BONE
+// ======================================================
+
+d.bp_segs.forEach(seg => {
+
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    let avgDepth = (p1.depth + p2.depth) / 2;
+
+    let factor = (avgDepth + 120) / 240;
+
+    if(factor < 0) factor = 0;
+    if(factor > 1) factor = 1;
+
+    let width = 4.5 - factor * 2.5;
+    let opacity = 1.0  - factor * 0.55;
+
+    renderQueue.push({
+        "depth": avgDepth,
+        "html":
+            `<line x1="${p1.x}" y1="${p1.y}"
+                   x2="${p2.x}" y2="${p2.y}"
+                   stroke="#eab308"
+                   stroke-width="${width}"
+                   stroke-opacity="${opacity}"
+                   stroke-linecap="round"/>`
+    });
+
+});
+
+// ======================================================
+// PROXIMAL AXIS
+// ======================================================
+if(d.axis_prox) {
+
+    {
+        let p1 = getDepthAndProj(d.axis_prox[0]);
+        let p2 = getDepthAndProj(d.axis_prox[1]);
+
+        renderQueue.push({
+            depth: (p1.depth + p2.depth)/2,
+            html: `<line
+                x1="${p1.x}"
+                y1="${p1.y}"
+                x2="${p2.x}"
+                y2="${p2.y}"
+                stroke="#ffffff"
+                stroke-width="2"
+                stroke-dasharray="6,4"/>`
+        });
+    }
+
+}
+
+
+// ======================================================
+// PROXIMAL BONE MARKERS
+// ======================================================
+
+d.bp_ap.forEach(seg => {
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line x1="${p1.x}" y1="${p1.y}"
+                       x2="${p2.x}" y2="${p2.y}"
+                       stroke="#00ff00"
+                       stroke-width="1"
+                       stroke-linecap="round"/>`
+    });
+});
+
+d.bp_lat.forEach(seg => {
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line x1="${p1.x}" y1="${p1.y}"
+                       x2="${p2.x}" y2="${p2.y}"
+                       stroke="#ff0000"
+                       stroke-width="1"
+                       stroke-linecap="round"/>`
+    });
+});
+
+
+d.bd_ap.forEach(seg => {
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line x1="${p1.x}" y1="${p1.y}"
+                       x2="${p2.x}" y2="${p2.y}"
+                       stroke="#00ff00"
+                       stroke-width="1"
+                       stroke-linecap="round"/>`
+    });
+    
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    let screenLen = Math.sqrt(dx*dx + dy*dy);
+
+});
+
+d.bd_lat.forEach(seg => {
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line x1="${p1.x}" y1="${p1.y}"
+                       x2="${p2.x}" y2="${p2.y}"
+                       stroke="#ff0000"
+                       stroke-width="1"
+                       stroke-linecap="round"/>`
+    });
+});
+
+// ======================================================
+// PROXIMAL BONE OPPOSITE MARKERS
+// ======================================================
+
+d.bp_ap_opp.forEach(seg => {
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line x1="${p1.x}" y1="${p1.y}"
+                       x2="${p2.x}" y2="${p2.y}"
+                       stroke="#006400"
+                       stroke-width="1"
+                       stroke-linecap="round"/>`
+    });
+});
+
+d.bp_lat_opp.forEach(seg => {
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line x1="${p1.x}" y1="${p1.y}"
+                       x2="${p2.x}" y2="${p2.y}"
+                       stroke="#8b0000"
+                       stroke-width="1"
+                       stroke-linecap="round"/>`
+    });
+});
+
+// ======================================================
+// DISTAL BONE OPPOSITE MARKERS
+// ======================================================
+
+d.bd_ap_opp.forEach(seg => {
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line x1="${p1.x}" y1="${p1.y}"
+                       x2="${p2.x}" y2="${p2.y}"
+                       stroke="#006400"
+                       stroke-width="1"
+                       stroke-linecap="round"/>`
+    });
+});
+
+
+d.bd_lat_opp.forEach(seg => {
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line x1="${p1.x}" y1="${p1.y}"
+                       x2="${p2.x}" y2="${p2.y}"
+                       stroke="#8b0000"
+                       stroke-width="1"
+                       stroke-linecap="round"/>`
+    });
+});
+
+
+// ======================================================
+// DISTAL BONE
+// ======================================================
+
+d.bd_segs.forEach(seg => {
+
+    let p1 = getDepthAndProj(seg[0]);
+    let p2 = getDepthAndProj(seg[1]);
+
+    let avgDepth = (p1.depth + p2.depth) / 2;
+
+    let factor = (avgDepth + 120) / 240;
+
+    if(factor < 0) factor = 0;
+    if(factor > 1) factor = 1;
+
+    let width = 4.5 - factor * 2.5;
+    let opacity = 1.0 - factor * 0.55;
+
+    renderQueue.push({
+        "depth": avgDepth,
+        "html":
+            `<line x1="${p1.x}" y1="${p1.y}"
+                   x2="${p2.x}" y2="${p2.y}"
+                   stroke="#f97316"
+                   stroke-width="${width}"
+                   stroke-opacity="${opacity}"
+                   stroke-linecap="round"/>`
+    });
+
+});
+
+// ======================================================
+// DISTAL AXIS
+// ======================================================
+
+if(d.axis_dist) {
+
+    let p1 = getDepthAndProj(d.axis_dist[0]);
+    let p2 = getDepthAndProj(d.axis_dist[1]);
+
+    renderQueue.push({
+        "depth": (p1.depth + p2.depth) / 2,
+        "html": `<line
+            x1="${p1.x}"
+            y1="${p1.y}"
+            x2="${p2.x}"
+            y2="${p2.y}"
+            stroke="#ffffff"
+            stroke-width="2"
+            stroke-dasharray="6,4"/>`
+    });
+
+}
+
+    // Micro-Shaded Proximal Ring Segments (Near side thicker than far side correction)
+    d.wp_segs.forEach(seg => {
+        let p1 = getDepthAndProj(seg[0]); let p2 = getDepthAndProj(seg[1]);
+        let avgDepth = (p1.depth + p2.depth) / 2;
+        let factor = (avgDepth + 120) / 240; // Normalize layout boundaries
+        if(factor < 0) factor = 0; if(factor > 1) factor = 1;
+        // Correct depth shading inversion: near side (smaller depth values) matches thicker boundaries
+        let strokeW = 5.5 - (factor * 3.5);
+        let opacity = 1.0 - (factor * 0.5);
+        renderQueue.push({ "depth": avgDepth, "html": `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#94a3b8" stroke-width="${strokeW}" stroke-opacity="${opacity}" stroke-linecap="round"/>` });
+    });
+
+    // Micro-Shaded Distal Ring Segments (Near side thicker correction)
+    d.wd_segs.forEach(seg => {
+        let p1 = getDepthAndProj(seg[0]); let p2 = getDepthAndProj(seg[1]);
+        let avgDepth = (p1.depth + p2.depth) / 2;
+        let factor = (avgDepth + 120) / 240;
+        if(factor < 0) factor = 0; if(factor > 1) factor = 1;
+        let strokeW = 5.5 - (factor * 3.5);
+        let opacity = 1.0 - (factor * 0.5);
+        renderQueue.push({ "depth": avgDepth, "html": `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="#06b6d4" stroke-width="${strokeW}" stroke-opacity="${opacity}" stroke-linecap="round"/>` });
+    });
+    
+    
+
+
+    // Hexapod Hardware Struts
+    for(let i=0; i<6; i++) {
+        let p1 = getDepthAndProj(d.struts[i][0]);
+        let p2 = getDepthAndProj(d.struts[i][1]);
+        let mid = getDepthAndProj([
+            (d.struts[i][0][0] + d.struts[i][1][0])/2,
+            (d.struts[i][0][1] + d.struts[i][1][1])/2,
+            (d.struts[i][0][2] + d.struts[i][1][2])/2
+        ]);
+
+        let strutHtml = `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${colors[i]}" stroke-width="3.5" stroke-linecap="round"/><circle cx="${mid.x}" cy="${mid.y}" r="7" fill="#ffffff" stroke="${colors[i]}" stroke-width="2"/><text x="${mid.x}" y="${mid.y + 3.5}" fill="#0f172a" font-size="9" font-weight="bold" text-anchor="middle">${i+1}</text>`;
+        renderQueue.push({ "depth": mid.depth, "html": strutHtml });
+    }
+
+    renderQueue.sort((a, b) => b.depth - a.depth); //decending order...works.   
+
+    
+    let finalHtml = '';
+    renderQueue.forEach(item => finalHtml += item.html);
+    svg3d.innerHTML = finalHtml;
+
+    // Standardized 2D tracking views plotting Distal Bone data parameters
+    renderScaleGrid2D("svgSag", 1, 2, "#e11d48", day, -20, 20, -45, 0, "Anterior-Posterior (Y mm)", "Axial Extension (Z mm)");
+    renderScaleGrid2D("svgCor", 0, 2, "#2563eb", day, -20, 20, -45, 0, "Medial-Lateral (X mm)", "Axial Extension (Z mm)");
+    renderScaleGrid2D("svgAxi", 0, 1, "#7c3aed", day, -20, 20, -20, 20, "Medial-Lateral (X mm)", "Anterior-Posterior (Y mm)");
+    //*********************
+    // metrics panel
+    //**********************  
+
+
+    document.getElementById("metrics-panel").innerHTML =       // for file marking during test
+    "\nsim_py_update:" + d.sim_py_update + "\nsim_ui_py_update:" + d.sim_ui_py_update ;
+
+    let s = prescription[day];
+    document.getElementById("metrics-panel").innerHTML +=     // if first line,  change += to =
+    "\nStruts:";
+  
+    document.getElementById("metrics-panel").innerHTML += "\n[" +s.map(v => Number(v).toFixed(0)).join(", ") +"]";  
+    document.getElementById("metrics-panel").innerHTML += "\n";
+    document.getElementById("metrics-panel").innerHTML += "\nTX = " + d.tx;
+    document.getElementById("metrics-panel").innerHTML += "\nTY = " + d.ty;
+    document.getElementById("metrics-panel").innerHTML += "\nTZ = " + d.tz;
+    document.getElementById("metrics-panel").innerHTML += "\n";
+    document.getElementById("metrics-panel").innerHTML += "\nRX = " + d.rx;
+    document.getElementById("metrics-panel").innerHTML += "\nRY = " + d.ry;
+    document.getElementById("metrics-panel").innerHTML += "\nRZ = " + d.rz;
+    document.getElementById("metrics-panel").innerHTML += "\n";
+    document.getElementById("metrics-panel").innerHTML += "\nTranslation Mag = " + d.translation_mag.toFixed(3);    
+    document.getElementById("metrics-panel").innerHTML += "\nrot_seq=" + d.rot_seq + "\n" + "bp_offset= " + d.bp_offset + " | " + "bp_tilt= " +  d.bp_tilt + ", " + "\n" + "bd_offset= " + d.bd_offset + " | " + "bd_tilt= " +  d.bd_tilt;
+    
+    
+    // Balanced Matrix Pose display (Distal Bone first, followed by Distal Ring reference records)
+    let mb = d.matrix_db;
+    let mr = d.matrix_dr;
+    document.getElementById("metrics-panel").innerHTML +=
+        `\n\nDISTAL BONE SECTOR POSE MATRIX (Relative to Proximal Center Reference):\n` +
+        `[ ${mb[0][0].toFixed(4).padStart(8)} ${mb[0][1].toFixed(4).padStart(8)} ${mb[0][2].toFixed(4).padStart(8)} | T-X: ${d.coords[0].toFixed(2).padStart(6)}mm ]\n` +
+        `[ ${mb[1][0].toFixed(4).padStart(8)} ${mb[1][1].toFixed(4).padStart(8)} ${mb[1][2].toFixed(4).padStart(8)} | T-Y: ${d.coords[1].toFixed(2).padStart(6)}mm ]\n` +
+        `[ ${mb[2][0].toFixed(4).padStart(8)} ${mb[2][1].toFixed(4).padStart(8)} ${mb[2][2].toFixed(4).padStart(8)} | T-Z: ${d.coords[2].toFixed(2).padStart(6)}mm ]\n\n` +
+        `DISTAL RING PLATFORM POSE MATRIX:\n` +
+        `[ ${mr[0][0].toFixed(4).padStart(8)} ${mr[0][1].toFixed(4).padStart(8)} ${mr[0][2].toFixed(4).padStart(8)} | X: ${mr[0][3].toFixed(2).padStart(6)}mm ]\n` +
+        `[ ${mr[1][0].toFixed(4).padStart(8)} ${mr[1][1].toFixed(4).padStart(8)} ${mr[1][2].toFixed(4).padStart(8)} | Y: ${mr[1][3].toFixed(2).padStart(6)}mm ]\n` +
+        `[ ${mr[2][0].toFixed(4).padStart(8)} ${mr[2][1].toFixed(4).padStart(8)} ${mr[2][2].toFixed(4).padStart(8)} | Z: ${mr[2][3].toFixed(2).padStart(6)}mm ]`;
+
+    //*********************
+    // debug panel
+    //**********************  
+    dbg("reached begining of debugging"); // marking for java script debugging
+
+    dbg("html update #. 8");
+
+    let p1 = getDepthAndProj(d.wp_segs[0][0]);
+    let p2 = getDepthAndProj(d.wp_segs[0][1]);
+    dbg("yaw=" + document.getElementById("camYaw").value +
+    " | pitch=" + document.getElementById("camPitch").value  +
+    " | Ring depth = " + ((p1.depth+p2.depth)/2).toFixed(2));
+
+
+    dbg (
+    "\n\nS1 TOP depth = " + getDepthAndProj(d.struts[0][0]).depth.toFixed(2) +
+    "\nS1 BOT depth = " + getDepthAndProj(d.struts[0][1]).depth.toFixed(2) +
+    "\nS1 MID depth = " + getDepthAndProj([
+        (d.struts[0][0][0] + d.struts[0][1][0]) / 2,
+        (d.struts[0][0][1] + d.struts[0][1][1]) / 2,
+        (d.struts[0][0][2] + d.struts[0][1][2]) / 2
+    ]).depth.toFixed(2) +"\n" +
+    "\nS4 TOP depth = " + getDepthAndProj(d.struts[3][0]).depth.toFixed(2) +
+    "\nS4 BOT depth = " + getDepthAndProj(d.struts[3][1]).depth.toFixed(2) +
+    "\nS4 MID depth = " + getDepthAndProj([
+        (d.struts[3][0][0] + d.struts[3][1][0]) / 2,  
+        (d.struts[3][0][1] + d.struts[3][1][1]) / 2,  
+        (d.struts[3][0][2] + d.struts[3][1][2]) / 2  
+    ]).depth.toFixed(2) +"\n"
+    );
+   
+    for(let i=0;i<6;i++){
+    dbg(
+        "S"+(i+1)+
+        " X="+d.struts[i][1][0].toFixed(1)+
+        " Y="+d.struts[i][1][1].toFixed(1)+
+        " z="+d.struts[i][1][2].toFixed(1)
+        );
+    }
+    for(let i=0;i<6;i++){
+    dbgVec("Strut"+(i+1), d.struts[i][1]); }
+    
+    //*********************
+    // LogEvent panel
+    //********************** 
+
+    //logEvent("test msg to LogEvent panel");
+
+    //*********************
+    // PlannerDbg panel
+    //********************** 
+
+    //plannerDbg("test msg to planner dbg panel");
+  
+dbg("reached end of renderFrame() "); }; // marking for java script debugging
+
+function renderScaleGrid2D(svgId, idxA, idxB, color, activeIdx, minA, maxA, minB, maxB, labelA, labelB) {
+
+    const trace = Viewer.trace();
+    if (!trace || trace.length === 0) return;
+    const svg = document.getElementById(svgId);
+    if (!svg) return;
+
+    let boxDim = 200, pad = 32;
+    let chartDim = boxDim - 2 * pad;
+
+    function map2d(valA, valB) {
+        let x = pad + ((valA - minA) / (maxA - minA)) * chartDim;
+        let y = (boxDim - pad) - ((valB - minB) / (maxB - minB)) * chartDim;
+        return { "x": x, "y": y };
+    }
+
+    let html = `<rect x="${pad}" y="${pad}" width="${chartDim}" height="${chartDim}" fill="#fafafa" stroke="${color}" stroke-width="1" opacity="0.3"/>`;
+
+    for(let val=minA; val<=maxA; val+=20) {
+        let pt = map2d(val, minB);
+        html += `<line x1="${pt.x}" y1="${pad}" x2="${pt.x}" y2="${boxDim-pad}" stroke="#e2e8f0" stroke-width="1"/>`;
+        html += `<text x="${pt.x}" y="${boxDim-pad+10}px" fill="#64748b" font-size="7" text-anchor="middle">${val}</text>`;
+    }
+
+    let stepB = (maxB - minB) / 4;
+    for(let val=minB; val<=maxB; val+=stepB) {
+        let pt = map2d(minA, val);
+        html += `<line x1="${pad}" y1="${pt.y}" x2="${boxDim-pad}" y2="${pt.y}" stroke="#e2e8f0" stroke-width="1"/>`;
+        html += `<text x="${pad-4}" y="${pt.y+2.5}" fill="#64748b" font-size="7" text-anchor="end">${Math.round(val)}</text>`;
+    }
+
+    let originP = map2d(0, 0);
+    if (minA <= 0 && maxA >= 0) {
+        html += `<line x1="${originP.x}" y1="${pad}" x2="${originP.x}" y2="${boxDim-pad}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>`;
+    }
+    if (minB <= 0 && maxB >= 0) {
+        html += `<line x1="${pad}" y1="${originP.y}" x2="${boxDim-pad}" y2="${originP.y}" stroke="#94a3b8" stroke-width="1" stroke-dasharray="2,2"/>`;
+    }
+
+    // Chart path historical line sequence tracking the Distal Bone vector paths
+    for(let i=1; i<trace.length; i++) {
+        let p1 = map2d(trace[i-1][idxA], trace[i-1][idxB]);
+        let p2 = map2d(trace[i][idxA], trace[i][idxB]);
+        let opacity = (i <= activeIdx) ? "1.0" : "0.1";
+        let width = (i <= activeIdx) ? "2.5" : "1";
+        html += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="${color}" stroke-width="${width}" opacity="${opacity}"/>`;
+    }
+
+    let curP = map2d(trace[activeIdx][idxA], trace[activeIdx][idxB]);
+    html += `<circle cx="${curP.x}" cy="${curP.y}" r="4.5" fill="#0f172a" stroke="#fff" stroke-width="1.5"/>`;
+
+    html += `<text x="${boxDim/2}" y="${boxDim-4}" fill="#334155" font-size="8" font-weight="600" text-anchor="middle">${labelA}</text>`;
+    html += `<text x="${boxDim/2}" y="${10}" fill="#334155" font-size="8" font-weight="600" text-anchor="middle">${labelB}</text>`;
+
+    svg.innerHTML = html;
+}
+
+
+function check(){ // move from the top ..to call after Viewer.installCase(window.currentCase);
+window.logEvent("Simulation present: " +(Viewer.case.simulation? "YES": "NO"));
+
+window.logEvent("Viewer case keys: " + Object.keys(Viewer.case).join(", "));
+    
+if(!Viewer.case.metadata){
+    Viewer.case.metadata = {};
+}
+
+
+
+}
+
+
+
+</script>
+

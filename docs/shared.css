@@ -1,0 +1,813 @@
+:root{--planning-left-width:26%;}
+body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background:#f3f3f3;
+}
+/* ------------------------------------------------ */
+/* Header                                           */
+/* ------------------------------------------------ */
+#header{
+    background:#23445b;
+    color:white;
+    padding:12px 20px;
+}
+#title{
+    font-size:28px;
+    font-weight:bold;
+}
+#caseRow{
+    margin-top:8px;
+}
+/* ------------------------------------------------ */
+/* Menu                                             */
+/* ------------------------------------------------ */
+#menu{
+    margin-top:15px;
+    display:flex;
+    gap:10px;
+}
+#menu a{
+    color:white;
+    text-decoration:none;
+    font-weight:bold;
+}
+#menu a:hover{
+    text-decoration:underline;
+}
+/* ------------------------------------------------ */
+/* Workspace                                        */
+/* ------------------------------------------------ */
+#workspace,#workspaceHost{
+    padding:25px;
+}
+/* ------------------------------------------------ */
+/* Tables                                           */
+/* ------------------------------------------------ */
+table{
+    border-collapse:collapse;
+    width:100%;
+    background:white;
+}
+th,
+td{
+    border:1px solid #cfcfcf;
+    padding:10px;
+    text-align:center;
+}
+th{
+    background:#e9eef2;
+}
+.rowLabel{
+    text-align:left;
+    font-weight:bold;
+    width:150px;
+}
+#case_name, #patient_name, #hospital,#surgeon, #patient_id {
+    width:150px;
+    text-align:left;
+}
+/* ------------------------------------------------ */
+/* Inputs                                           */
+/* ------------------------------------------------ */
+input[type="number"],
+input[type="text"]{
+    width:65px;
+    text-align:center;
+}
+#shellCaseName{
+    width:150px;
+    text-align:left;
+}
+/* frame page */
+#hardware{width:180px;}
+#strut_size{width:120px;}
+/*-----------*/
+/* patient page */
+#patient_name{width:260px;}
+#hospital{width:260px;}
+#surgeon{width:260px;}
+#case_name{width:260px;}
+#patient_id{width:140px;}
+#planner_mode{width:180px;}
+#case_created{width:180px;}
+#case_modified{width:180px;}
+#file_saved{width:180px;}
+#version{width:100px;}
+#notes{
+    width:100%;
+    min-height:140px;
+    resize:vertical;
+    box-sizing:border-box;
+}
+/*-----------*/
+/* ------------------------------------------------ */
+/* Buttons                                          */
+/* ------------------------------------------------ */
+#buttons{
+    margin-top:20px;
+    display:flex;
+    gap:15px;
+}
+button{
+    padding:10px 25px;
+}
+/* ------------------------------------------------ */
+/* Status                                           */
+/* ------------------------------------------------ */
+#statusBar{
+    margin-top:20px;
+    padding:12px;
+    background:white;
+    border:1px solid #cfcfcf;
+}
+/* ------------------------------------------------ */
+/* Developer Dashboard                              */
+/* ------------------------------------------------ */
+#currentCaseInspector{ /* not use */
+    white-space:pre-wrap;
+    font-family:Consolas,"Courier New",monospace; 
+    /*font-family:Arial, Helvetica, sans-serif;*/
+    font-size:13px;
+    background:#f7f7f7;
+    border:1px solid #cccccc;
+    padding:10px;
+    overflow:auto;
+    max-height:500px;
+}
+.developerPanel{
+    border:1px solid #bbb;
+    border-radius:6px;
+    background:#f8f8f8;
+    padding:10px;
+    margin-bottom:12px;
+}
+.developerPanelTitle{
+    font-weight:bold;
+    margin-bottom:8px;
+}
+.developerPanelTitle small{
+    font-weight:normal;
+    color:#666;
+}
+.developerPanel pre{
+    margin:0;
+    padding:8px;
+    background:white;
+    border:1px solid #ddd;
+    overflow:auto;
+    max-height:320px;
+    font-size:12px;
+}
+
+/* ------------------------------------------------ */
+/* ????????                                         */
+/* ------------------------------------------------ */
+
+.workflowSection{
+    background:white;
+    border:1px solid #cccccc;
+    padding:18px;
+    margin-bottom:20px;
+}
+.workflowSection h2{
+    margin-top:0;
+    color:#23445b;
+    border-bottom:1px solid #dddddd;
+    padding-bottom:8px;
+}
+.parameterRow{
+    display:flex;
+    align-items:center;
+    margin:10px 0;
+}
+.parameterLabel{
+    width:220px;
+    font-weight:bold;
+}
+.parameterValue{
+    width:65px;
+    text-align:center;
+}
+.parameterUnit{
+    width:35px;
+    margin-left:8px;
+    margin-right:40px;      /* more gap before first radio */
+}
+.directionGroup{
+    display:flex;
+    align-items:center;
+    gap:24px;               /* space between Left and Right options */
+}
+.directionOption{
+    display:flex;
+    align-items:center;
+    gap:3px;                /* very small gap between radio and text */
+    white-space:nowrap;
+}
+.directionOption input{
+    margin:0;
+}
+/* ============================================================
+   STANDARD FORM LAYOUT
+   ============================================================ */
+.formTable{
+    border-collapse:collapse;
+    width:100%;
+}
+.formTable td{
+    padding:6px;
+}
+.label{
+    width:160px;
+    white-space:nowrap;
+    font-weight:bold;
+}
+.topAlign{
+    vertical-align:top;
+}
+/*   ============================================================ */
+.moduleButton{
+    border:2px solid transparent;
+    border-radius:15px;
+}
+.workspaceTabs .moduleButton{
+    border-radius:8px 8px 0 0;
+}
+.workflowButtons{
+    margin-top:20px;
+}
+.phaseCard{
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    padding:12px;
+    margin-bottom:12px;
+    background:#ffffff;
+}
+.phaseCardHeader{
+    font-size:16px;
+    margin-bottom:8px;
+}
+.phaseCardBody{
+    display:grid;
+    row-gap:4px;
+    margin-bottom:10px;
+}
+.phaseLabel{
+    display:inline-block;
+    width:120px;
+    font-weight:600;
+}
+.phaseCardFooter{
+    display:flex;
+    justify-content:flex-end;
+}
+/* ============================================================
+    MOUNTING PAGE
+============================================================ */
+.mountingCard{
+    background:#ffffff;
+    border:1px solid #d8dee8;
+    border-radius:10px;
+    padding:14px 18px;
+    margin-bottom:18px;
+}
+.mountingCard h3{
+    margin:0 0 12px 0;
+    font-size:16px;
+    color:#1f2937;
+}
+.mountingRow{
+    display:grid;
+    /* Label | Input | Unit | Radio1 | Radio2 | Guide */
+    grid-template-columns:
+        220px
+        70px
+        30px
+        120px
+        120px
+        1fr;
+    align-items:center;
+    column-gap:8px;
+    row-gap:4px;
+    margin:10px 0;
+}
+.mountingLabel{
+    font-weight:600;
+    color:#374151;
+}
+.mountingRow input[type="number"]{
+    width:70px;
+    box-sizing:border-box;
+    text-align:right;
+}
+.mountingRow label{
+    display:flex;
+    align-items:center;
+    white-space:nowrap;
+    margin:0;
+}
+.mountingGuide{
+    color:#6b7280;
+    font-style:italic;
+    font-size:13px;
+}
+/* ============================================================
+   PLANNING DESK
+============================================================ */
+.planningDesk{
+    display:flex;
+    flex-direction:row;
+    align-items:flex-start;
+    gap:20px;
+}
+.leftPanel{
+    width:var(--planning-left-width);
+    min-width:280px;
+    flex-shrink:0;
+}
+.rightPanel{
+    width:calc(100% - var(--planning-left-width));
+    flex-grow:1;
+}
+.workspaceTabs{
+    display:flex;
+    gap:10px;
+    margin-bottom:12px;
+}
+#planningWorkspace{
+    min-height:700px;
+    border:1px solid #cfcfcf;
+    padding:12px;
+    background:white;
+}
+.summaryCard{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+.summaryHeader{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    font-weight:bold;
+}
+.summaryRow{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+}
+.plannerCheckbox{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:14px;
+    margin-bottom:14px;
+    font-size:14px;
+}
+.plannerInputRow input{
+    width:100px;
+}
+.phaseDashboardLink{
+    color:#1f4f8f;
+    font-weight:600;
+    cursor:pointer;
+    display:inline-block;
+}
+.phaseDashboardLink:hover{
+    text-decoration:underline;
+}
+/* =============== sim tab =================== */
+.treatmentSimulationGuide{
+    padding: 24px;
+    margin: 20px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #374151;
+    line-height: 1.5;
+    max-width: 700px;
+}
+.treatmentSimulationGuide h3{
+    margin-top: 0;
+    margin-bottom: 12px;
+    font-size: 20px;
+}
+.treatmentSimulationGuide p{
+    margin: 8px 0;
+}
+/*=========================================================
+    Adjustment Plan Card
+=========================================================*/
+/* another rounded corner box inside tab
+.adjustmentPlanCard{
+    margin-top:12px;
+    background:#ffffff;
+    border:1px solid #d8d8d8;
+    border-radius:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    overflow:hidden;
+}
+*/
+/* no rounded corner box inside tab*/
+.adjustmentPlanCard{
+    margin-top:0;
+    background:#ffffff;
+    border:none;
+    border-radius:0;
+    box-shadow:none;
+    overflow:hidden;
+}
+/*=========================================================
+    Phase Legend
+=========================================================*/
+.plannerPhaseLegend{
+    display:flex;
+    align-items:stretch;
+    gap:18px;
+    padding:12px 18px;
+    background:#ffffff;
+    border-bottom:1px solid #dfe4ea;
+    flex-wrap:wrap;
+}
+
+.plannerPhaseLegendItem{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:28px;
+    font-size:13px;
+    color:#4b5563;
+    font-weight:500;
+}
+
+.plannerPhaseLegendStrip{
+    display:inline-block;
+    height:24px;
+    flex:0 0 auto;
+    border-radius:2px;
+}
+
+.plannerPhaseLegendName{
+    white-space:nowrap;
+}
+
+/*=========================================================
+    Today Date Highlight
+=========================================================*/
+.adjustmentPlanTodayDate{
+    display:inline-block;
+    padding:2px 5px;
+    border:1px solid #50B83C; 
+    /*background:#EAF6EA;
+    background:#50B83C;*/
+    border-radius:4px;
+}
+
+/*=========================================================
+    Toolbar
+=========================================================*/
+.adjustmentPlanToolbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:16px;
+    padding:16px 18px;
+    border-bottom:1px solid #dfe4ea;
+    background:#ffffff;
+}
+.plannerTitle{
+    font-size:18px;
+    font-weight:600;
+    color:#243447;
+    line-height:1.2;
+}
+.plannerSubtitle{
+    margin-top:3px;
+    font-size:12px;
+    color:#6b7280;
+}
+/*=========================================================
+    Tables
+=========================================================*/
+.plannerHeaderTable,
+.plannerBodyTable{
+    width:100%;
+    border-collapse:collapse;
+    table-layout:fixed;
+    font-family:Arial, Helvetica, sans-serif;
+    font-size:14px;
+    color:#222;
+}
+.plannerHeaderTable{
+    background:#ffffff;
+    border-bottom:2px solid #cfd6df;
+}
+.plannerHeaderTable th{
+    padding:10px 10px;
+    font-weight:600;
+    border:none;
+}
+.plannerBodyTable td{
+    padding:9px 10px;
+    border:none;
+}
+/*=========================================================
+    Scrolling area
+=========================================================*/
+.plannerBodyScroll{
+    max-height:650px;
+    overflow-y:auto;
+}
+/*=========================================================
+    Alternate rows
+=========================================================*/
+.plannerBodyTable tbody tr:nth-child(even){
+    background:#e8eef5;
+}
+.plannerBodyTable tbody tr:hover{
+    background:#eef6ff;
+}
+/*=========================================================
+    Column widths
+=========================================================*/
+.colDay{
+    width:90px;
+}
+.colDate{
+    width:120px;
+}
+.colStrut{
+    width:auto;
+}
+/*=========================================================
+    Cell alignment
+=========================================================*/
+.dayColumn{
+    text-align:left;
+    white-space:nowrap;
+    font-weight:600;
+}
+.dateColumn{
+    text-align:left;
+    white-space:nowrap;
+}
+.strutColumn,
+.strutValue{
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+}
+/*=========================================================
+    PDF button
+=========================================================*/
+.adjustmentPlanToolbar .moduleButton{
+    margin:0;
+    white-space:nowrap;
+    align-self:center;
+}
+/*=========================================================
+    Planner Overlay
+=========================================================*/
+.plannerOverlay{
+    position:absolute;
+    inset:0;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:rgba(255,255,255,0.35);
+    z-index:1000;
+    opacity:0;
+    visibility:hidden;
+    transition:
+        opacity .2s ease,
+        visibility .2s ease;
+}
+.plannerOverlay.show{
+    opacity:1;
+    visibility:visible;
+}
+.plannerOverlayPanel{
+    background:white;
+    border:1px solid #d8d8d8;
+    border-radius:10px;
+    padding:28px 40px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.15);
+    text-align:center;
+    min-width:320px;
+}
+.plannerSpinner{
+    width:42px;
+    height:42px;
+    margin:0 auto 20px auto;
+    border:4px solid #d7dde5;
+    border-top:4px solid #1f4f8f;
+    border-radius:50%;
+    animation:plannerSpin 1.1s linear infinite;
+}
+@keyframes plannerSpin{
+    from{
+        transform:rotate(0deg);
+    }
+    to{
+        transform:rotate(360deg);
+    }
+}
+.plannerOverlayTitle{
+    font-size:20px;
+    font-weight:600;
+    color:#243447;
+}
+.plannerOverlayMessage{
+    margin-top:10px;
+    color:#4b5563;
+}
+.plannerOverlayHint{
+    margin-top:18px;
+    font-size:13px;
+    color:#9aa1ab;
+}
+.moduleButton:disabled{
+    opacity:0.65;
+    cursor:default;
+}
+/*=========================================================
+    PHASE EDITOR
+=========================================================*/
+.phaseEditor{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    margin-top:16px;
+}
+.phaseEditorCard{
+    display:flex;
+    flex-direction:column;
+    gap:0;
+}
+.phaseEditorCard > .sectionTitle{
+    margin-top:16px;
+    margin-bottom:8px;
+}
+/*---------------------------------------------------------
+    Selected Tab (shared by all tab groups)
+---------------------------------------------------------*/
+.selectedTab{
+    background:#1f4f8f;
+    color:#ffffff;
+    border-color:#1f4f8f;
+    font-weight:600;
+}
+/*---------------------------------------------------------
+    Generic sections
+---------------------------------------------------------*/
+.phaseSection,
+.targetSection,
+.futureSection{
+    border:1px solid #d8d8d8;
+    border-radius:8px;
+    background:#ffffff;
+    padding:16px;
+}
+.sectionTitle{
+    font-size:18px;
+    font-weight:700;
+    color:#1f4f8f;
+    margin-bottom:16px;
+}
+/*---------------------------------------------------------
+    Phase information
+---------------------------------------------------------*/
+.fieldRow{
+    display:flex;
+    align-items:flex-start;
+    margin-bottom:14px;
+}
+.fieldLabel{
+    width:180px;
+    font-weight:600;
+    padding-top:7px;
+}
+.textField{
+    width:320px;
+    padding:6px 8px;
+}
+.notesField{
+    width:430px;
+    min-height:80px;
+    resize:vertical;
+    padding:6px 8px;
+}
+/*---------------------------------------------------------
+    TARGET
+---------------------------------------------------------*/
+.targetGroup{
+    margin-top:18px;
+    padding-top:12px;
+    border-top:1px solid #e0e0e0;
+}
+.targetGroup:first-child{
+    margin-top:0;
+    padding-top:0;
+    border-top:none;
+}
+.targetGroupTitle{
+    font-size:14px;
+    font-weight:700;
+    color:#666666;
+    margin-bottom:14px;
+    letter-spacing:0.4px;
+}
+/*---------------------------------------------------------
+    Target rows
+---------------------------------------------------------*/
+.targetRow{
+    display:grid;
+    grid-template-columns:
+        190px
+        95px
+        auto;
+    align-items:center;
+    column-gap:18px;
+    margin-bottom:12px;
+}
+.targetLabel{
+    width:190px;
+    font-weight:500;
+}
+.targetInput{
+    display:flex;
+    align-items:center;
+    gap:4px;
+}
+.numberField{
+    width:60px;
+    text-align:right;
+    padding:5px 6px;
+}
+.unit,
+.unitLabel{
+    width:22px;
+    color:#6b7280;
+    white-space:nowrap;
+}
+/*---------------------------------------------------------
+    Radio choices
+---------------------------------------------------------*/
+.targetChoice{
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+}
+.targetChoice label{
+    display:flex;
+    align-items:center;
+    margin-right:42px;     /* distance between the two choices */
+}
+.targetChoice label:last-child{
+    margin-right:0;
+}
+.targetChoice input[type="radio"]{
+    margin:0;
+    margin-right:2px;      /* very close to its text */
+}
+/*---------------------------------------------------------
+    Future section
+---------------------------------------------------------*/
+.futureSection{
+    opacity:0.55;
+}
+.futureText{
+    line-height:28px;
+    color:#666666;
+}
+/*---------------------------------------------------------
+    Small screens
+---------------------------------------------------------*/
+@media (max-width:900px){
+    .targetRow{
+        flex-direction:column;
+        align-items:flex-start;
+        gap:8px;
+    }
+    .targetLabel{
+        width:auto;
+    }
+    .targetInput{
+        width:auto;
+    }
+    .targetChoice{
+        gap:18px;
+        flex-wrap:wrap;
+    }
+}
+/*-----------------------------
+Autosave
+------------------------------*/
+.autosaveNotice{
+    margin-top:12px;
+    font-size:12px;
+    color:#888888;
+    font-style:italic;
+}
+
+
+
+

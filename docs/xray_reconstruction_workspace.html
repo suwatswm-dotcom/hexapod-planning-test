@@ -1,0 +1,579 @@
+<!-- R884 — Patient-level CASE file controls + X-ray autosave; preserves R878 Inspector refresh behavior. -->
+<!-- R896 — Combined autosave status and restored viewport height. R888 — Hidden-workspace case-file bridge uses the R885 AP/LAT VTK API. R857 — WIP iframe API readiness diagnostics; engine version reported independently. R804 — Automatic Master Tab rotation candidate. Surgeon-facing MASTER marking removed; engine derives rotation from reconstructed proximal-ring pose and hardware topology. -->
+<style>
+/* R539 — fullscreen AP/LAT: keep the restore header above the VTK iframe. */
+.r536-xray-panel-card.r537-xray-expanded{position:fixed!important;inset:8px!important;z-index:99990!important;background:#fff!important;overflow:auto!important;box-shadow:0 0 0 100vmax rgba(0,0,0,.78);box-sizing:border-box;}
+.r536-xray-panel-card.r537-xray-expanded > div:first-child{position:sticky!important;top:0!important;z-index:100000!important;background:#fff!important;padding:8px 0!important;}
+.r536-xray-panel-card.r537-xray-expanded #xrayAPImageContainer,
+.r536-xray-panel-card.r537-xray-expanded #xrayLATImageContainer{height:calc(100vh - 250px)!important;min-height:0!important;}
+.r536-xray-panel-card.r537-xray-expanded iframe{height:100%!important;min-height:0!important;}
+.r536-xray-panel-card iframe{display:block;max-width:100%;}
+/* R539: removed obsolete floating load indicator. */
+
+/* R578 — presentation-only hierarchy; do not alter controller-owned behavior.
+/* R586 — keep expanded image viewport within the available card height. */ */
+.mountingCard > h2{margin-bottom:6px;}
+.r578-way{border:1px solid #b8c2cc;border-radius:8px;padding:12px;margin:14px 0;background:#fff;}
+.r578-way > summary{cursor:pointer;font-weight:700;font-size:1.02rem;padding:2px;}
+.r578-way[open] > summary{margin-bottom:12px;}
+.r578-way-note{font-size:13px;color:#4b5563;line-height:1.45;margin:6px 0 10px;}
+.r578-section-title{font-weight:700;margin:0 0 8px;}
+.r578-action-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+@media(max-width:760px){.mountingCard [style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important;}}
+</style>
+<!-- ============================================================
+     R365 — X-RAY RECONSTRUCTION / XRAYOBSERVATION V1 TEST
+     ============================================================ -->
+
+<!-- R626 — match the SPA page-heading pattern used by Deformity and Mounting. -->
+<h2 style="margin:0 0 16px;">X-ray Reconstruction</h2>
+
+<div class="mountingCard">
+
+    <div style="font-weight:700; margin-bottom:8px;">
+        R884 — X-RAY RECONSTRUCTION · AP/LAT AUTOSAVE
+    </div>
+
+
+    <!-- =====================================================
+         X-RAY INPUTS
+         ===================================================== -->
+
+    <h3>X-ray Images</h3>
+
+    <section id="xrayWipControls" aria-label="X-ray autosave status and diagnostics" style="border:1px solid #cbd5e1;border-radius:6px;padding:10px 12px;margin:0 0 12px;background:#f8fafc;color:#1f2937;">
+      <div style="font-weight:700;margin-bottom:6px;">CASE work status</div>
+      <div id="xrayWipStatus" role="status" aria-live="polite" style="margin-top:8px;font-size:13px;">AP/LAT autosave is ready when an image is loaded.</div>
+      <div style="margin-top:4px;font-size:12px;color:#64748b;">Open Case and Save Case are available on the Patient page. AP/LAT image and annotation changes are autosaved locally while you work.</div>
+    </section>
+
+    <div style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:12px;
+        margin-bottom:16px;
+    ">
+
+        <div id="xrayAPPanelCard" class="r536-xray-panel-card" style="
+            border:1px solid #ccc;
+            padding:12px;
+            border-radius:6px;
+        ">
+
+            <div style="display:flex;align-items:center;justify-content:space-between;font-weight:700;">
+                <span>AP X-ray</span><button type="button" data-xray-expand="AP">Expand</button>
+            </div>
+
+            <div id="xrayAPStatus"
+                 style="margin:8px 0;">
+                No image loaded
+            </div>
+
+            <button type="button"
+                    id="xrayAPLoadButton">
+                Load AP X-ray
+            </button>
+
+            <input type="file"
+                   id="xrayAPFileInput"
+                   accept=".dcm,.DCM,.ima,.IMA,image/*,application/dicom,application/octet-stream"
+                   style="display:none;">
+            
+            <div id="xrayAPImageContainer" style="margin-top:10px;position:relative;width:100%;min-height:460px;background:#111;overflow:hidden;">
+                <iframe id="xrayAPVtkFrame" src="./VTK_Test/vtk_dist/index.html?mode=clinical&view=AP&build=R896" title="AP X-ray VTK annotation panel" style="display:block;width:100%;height:460px;border:0;background:#111;" allow="fullscreen"></iframe>
+            </div>
+            
+            <div id="xrayAPObservationStatus"
+                 style="margin-top:8px;">
+                R570 — AP observations: 0
+            </div>
+
+        </div>
+
+
+        <div id="xrayLATPanelCard" class="r536-xray-panel-card" style="
+            border:1px solid #ccc;
+            padding:12px;
+            border-radius:6px;
+        ">
+
+            <div style="display:flex;align-items:center;justify-content:space-between;font-weight:700;">
+                <span>LAT X-ray</span><button type="button" data-xray-expand="LAT">Expand</button>
+            </div>
+
+            <div id="xrayLATStatus"
+                 style="margin:8px 0;">
+                No image loaded
+            </div>
+
+            <button type="button"
+                    id="xrayLATLoadButton">
+                Load LAT X-ray
+            </button>
+
+            <input type="file"
+                   id="xrayLATFileInput"
+                   accept=".dcm,.DCM,.ima,.IMA,image/*,application/dicom,application/octet-stream"
+                   style="display:none;">
+            
+            <div id="xrayLATImageContainer" style="margin-top:10px;position:relative;width:100%;min-height:460px;background:#111;overflow:hidden;">
+                <iframe id="xrayLATVtkFrame" src="./VTK_Test/vtk_dist/index.html?mode=clinical&view=LAT&build=R896" title="LAT X-ray VTK annotation panel" style="display:block;width:100%;height:460px;border:0;background:#111;" allow="fullscreen"></iframe>
+            </div>
+            
+            <div id="xrayLATObservationStatus"
+                 style="margin-top:8px;">
+                R570 — LAT observations: 0
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+
+    <!-- R804 — production workflow: native AP/LAT annotations → structural adequacy gate → automatic Master Tab reconstruction → reviewed explicit CASE Apply. -->
+    <section id="xrayProductionWorkflow" aria-label="Clinical reconstruction workflow" style="border:1px solid #b8c2cc;padding:16px;border-radius:8px;margin:16px 0;background:#fff;color:#222;box-sizing:border-box;">
+      <h3 style="margin:0 0 8px;">Determine deformity and mounting parameters</h3>
+      <div style="font-size:11px;color:#64748b;margin:-3px 0 8px;">Workflow R857 · engine version reported independently · automatic Master Tab reconstruction + guarded CASE application</div>
+      <p style="margin:0 0 12px;color:#555;font-size:14px;line-height:1.45;">Load the AP and LAT images above, complete the semantic annotations, then assess the observations and reconstruct the requested parameters.</p>
+      <div id="xrayReconstructionWorkflowStatus" role="status" style="margin-bottom:12px;padding:8px;background:#f5f7fa;border-radius:5px;">Status: Waiting for AP + LAT observations</div>
+      <button type="button" id="xrayDetermineParametersButton" title="Capture and validate the current AP/LAT annotations, then run the existing reconstruction engine" style="padding:10px 14px;font-weight:700;cursor:pointer;">Determine Deformity and Mounting Parameters</button>
+      <div id="xrayProductionResultPanel" style="margin-top:14px;border-top:1px solid #ddd;padding-top:12px;">
+        <strong>Reconstruction result</strong>
+        <div id="xrayProductionResultStatus" role="status" style="margin-top:8px;padding:8px;background:#f5f7fa;border-radius:5px;">No reconstruction run yet.</div>
+        <pre id="xrayProductionResultOutput" style="white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.45 ui-monospace,monospace;margin:10px 0 0;max-height:420px;overflow:auto;">Load AP and LAT images and create semantic annotations, then select Determine Deformity and Mounting Parameters.</pre>
+      </div>
+      <button type="button" id="xrayProductionApplyCaseButton" disabled title="No production reconstruction result is available yet" style="margin-top:12px;padding:9px 12px;cursor:not-allowed;">Apply Reconstructed Parameters to CASE</button>
+    </section>
+
+    <!-- R627: test-only panels are grouped below production controls and shown only in developer mode.
+         xray_reconstruction.js reveals this wrapper only when the explicit
+         window.XRAY_DEVELOPER_MODE application flag is true. -->
+<!-- R627 — developer toggle stays immediately above the diagnostic section. -->
+<div id="xrayDeveloperModeControl" style="display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin:18px 0 8px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:#334155;">
+  <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-weight:600;">
+    <input type="checkbox" id="xrayDeveloperModeToggle" style="width:17px;height:17px;margin-top:2px;flex:0 0 auto;">
+    <span>Developer mode — show diagnostic and synthetic-test panels</span>
+  </label>
+  <span id="xrayDeveloperModeStatus" style="font-size:12px;color:#64748b;align-self:center;">Production mode · diagnostics hidden</span>
+</div>
+
+    <div id="xrayDeveloperDiagnostics" hidden>
+      <div style="border:1px dashed #a66;padding:8px;margin:0 0 12px;color:#754;font-size:13px;">
+        Developer diagnostic mode enabled — test controls and diagnostic panels follow.
+      </div>
+
+    <!-- R625 — legacy metadata diagnostic: visible only in developer mode. -->
+    <div id="xrayDeveloperClinicalMetadataPanel" hidden>
+    <!-- R615 — clinical metadata lives below both VTK panels, never over an X-ray. -->
+    <section id="xrayClinicalMetadataWorkspace" aria-label="Clinical DICOM metadata" style="display:block;margin:16px 0;padding:12px;border:1px solid #b8c2cc;border-radius:8px;background:#fff;color:#222;box-sizing:border-box;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div>
+          <h3 style="margin:0 0 4px;">Clinical data · synthetic DICOM</h3>
+          <p style="margin:0;color:#555;font-size:13px;">Metadata embedded in the loaded AP and LAT DICOM files.</p>
+        </div>
+        <button type="button" id="xrayClinicalMetadataToggle" aria-expanded="false" style="padding:8px 12px;cursor:pointer;">Show clinical data</button>
+      </div>
+      <div id="xrayClinicalMetadataContent" hidden style="margin-top:12px;"></div>
+    </section>
+    </div><!-- /#xrayDeveloperClinicalMetadataPanel -->
+
+    <div id="xrayDeveloperViewIdentityPanel" hidden>
+    <details class="r578-way" id="xrayViewIdentityDiagnostics">
+      <summary>View identity diagnostic (legacy adapter)</summary>
+      <p class="r578-way-note">The AP and LAT clinical panels already have explicit identities. Retained for compatibility with the legacy observation adapter.</p>
+    <!-- =====================================================
+         R368 — EXPLICIT AP / LAT OBSERVATION IDENTITY
+         -----------------------------------------------------
+         The application does not infer the radiographic view.
+         The user explicitly assigns AP, LAT, or UNKNOWN.
+         ===================================================== -->
+
+    <div style="
+        border:2px solid #444;
+        padding:12px;
+        border-radius:6px;
+        margin-bottom:16px;
+    ">
+
+        <div style="font-weight:700;margin-bottom:8px;">
+            R368 — X-ray View Identity
+        </div>
+
+        <div style="margin-bottom:10px;">
+            Explicitly assign the current X-ray view. The application does not guess AP/LAT.
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" id="xraySetApViewButton">Set AP</button>
+            <button type="button" id="xraySetLatViewButton">Set LAT</button>
+            <button type="button" id="xraySetUnknownViewButton">Set UNKNOWN</button>
+        </div>
+
+        <div id="xrayViewStatus" style="margin-top:10px;font-family:monospace;">
+            R368 — CURRENT VIEW: UNKNOWN
+        </div>
+
+    </div>
+
+
+    </details>
+    </div><!-- /#xrayDeveloperViewIdentityPanel -->
+
+    <div id="xrayDeveloperObservationsPanel" hidden>
+    <!-- =====================================================
+         OBSERVATIONS
+         ===================================================== -->
+
+    <h3>Observations</h3>
+
+    <div style="
+        border:1px solid #ccc;
+        padding:12px;
+        border-radius:6px;
+        margin-bottom:16px;
+    ">
+
+        <div>
+            AP observations:
+            <strong id="xrayAPObservationCount">0</strong>
+        </div>
+
+        <div>
+            LAT observations:
+            <strong id="xrayLATObservationCount">0</strong>
+        </div>
+
+    </div>
+    </div><!-- /#xrayDeveloperObservationsPanel -->
+
+
+    <details class="r578-way" id="xrayWay1Diagnostics">
+      <summary>Way 1 — Synthetic reconstruction diagnostics</summary>
+      <p class="r578-way-note">Engineering-only tests using synthetic observations and known truth. These controls are not the real-image annotation workflow.</p>
+    <!-- ============================================================
+         OBSERVATION TEST PANEL
+         ------------------------------------------------------------
+         Developer/test instrument. Selects observations from the synthetic
+         pool created upstream by R257 Clinical Round-Trip and publishes the
+         selected subset as the normal renderer-neutral XrayObservation v2
+         contract.
+         ============================================================ -->
+    <div id="observationTestPanel" style="border:2px solid #555;padding:14px;border-radius:8px;margin-bottom:16px;">
+<div style="font-weight:700;margin-bottom:6px;">Observation Test Panel</div>
+<div style="font-size:13px;margin-bottom:12px;line-height:1.45;">Select observations independently for AP and LAT from the existing R257 synthetic observation pool. Choose the landmarks and strut observations you want the reconstruction engine to use.</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px;"><div style="flex:1 1 300px;min-width:280px;border:1px solid #aaa;padding:10px;border-radius:6px;">
+<div style="font-weight:700;margin-bottom:6px;">AP VIEW</div><div style="display:flex;gap:18px;flex-wrap:wrap;">
+<div><strong>Anatomy / references</strong><br><label><input type="checkbox" data-observation-view="AP" data-observation-code="PFCL"> PFCL</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="PRP"> PRP</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="DFCL"> DFCL</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="DRP"> DRP</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="LOC"> LOC</label><br>
+</div>
+<div><strong>Proximal points</strong><br><label><input type="checkbox" data-observation-view="AP" data-observation-code="S1-P"> S1-P</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S2-P"> S2-P</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S3-P"> S3-P</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S4-P"> S4-P</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S5-P"> S5-P</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S6-P"> S6-P</label><br>
+</div>
+<div><strong>Distal points</strong><br><label><input type="checkbox" data-observation-view="AP" data-observation-code="S1-D"> S1-D</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S2-D"> S2-D</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S3-D"> S3-D</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S4-D"> S4-D</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S5-D"> S5-D</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S6-D"> S6-D</label><br>
+</div>
+<div><strong>Directions</strong><br><label><input type="checkbox" data-observation-view="AP" data-observation-code="S1-DIR"> S1-DIR</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S2-DIR"> S2-DIR</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S3-DIR"> S3-DIR</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S4-DIR"> S4-DIR</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S5-DIR"> S5-DIR</label><br>
+<label><input type="checkbox" data-observation-view="AP" data-observation-code="S6-DIR"> S6-DIR</label><br>
+</div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button type="button" id="observationSelectAllApButton">Select All AP</button><button type="button" id="observationClearAllApButton">Clear AP</button></div></div><div style="flex:1 1 300px;min-width:280px;border:1px solid #aaa;padding:10px;border-radius:6px;">
+<div style="font-weight:700;margin-bottom:6px;">LAT VIEW</div><div style="display:flex;gap:18px;flex-wrap:wrap;">
+<div><strong>Anatomy / references</strong><br><label><input type="checkbox" data-observation-view="LAT" data-observation-code="PFCL"> PFCL</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="PRP"> PRP</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="DFCL"> DFCL</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="DRP"> DRP</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="LOC"> LOC</label><br>
+</div>
+<div><strong>Proximal points</strong><br><label><input type="checkbox" data-observation-view="LAT" data-observation-code="S1-P"> S1-P</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S2-P"> S2-P</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S3-P"> S3-P</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S4-P"> S4-P</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S5-P"> S5-P</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S6-P"> S6-P</label><br>
+</div>
+<div><strong>Distal points</strong><br><label><input type="checkbox" data-observation-view="LAT" data-observation-code="S1-D"> S1-D</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S2-D"> S2-D</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S3-D"> S3-D</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S4-D"> S4-D</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S5-D"> S5-D</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S6-D"> S6-D</label><br>
+</div>
+<div><strong>Directions</strong><br><label><input type="checkbox" data-observation-view="LAT" data-observation-code="S1-DIR"> S1-DIR</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S2-DIR"> S2-DIR</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S3-DIR"> S3-DIR</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S4-DIR"> S4-DIR</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S5-DIR"> S5-DIR</label><br>
+<label><input type="checkbox" data-observation-view="LAT" data-observation-code="S6-DIR"> S6-DIR</label><br>
+</div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;"><button type="button" id="observationSelectAllLatButton">Select All LAT</button><button type="button" id="observationClearAllLatButton">Clear LAT</button></div></div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;"><button type="button" id="observationRunButton">Run Reconstruction</button></div>
+<div id="observationStatus" style="margin-top:10px;font-family:monospace;white-space:pre-wrap;">AP 0 selected · LAT 0 selected</div>
+<pre id="observationOutput" style="margin-top:8px;max-height:360px;overflow:auto;white-space:pre-wrap;background:#f5f5f5;padding:8px;">No observation data yet.</pre>
+<div class="xray-copy-results-row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;"><button type="button" class="xray-copy-results-button" data-copy-target="observationOutput" style="padding:5px 10px;font-size:13px;cursor:pointer;">Copy results</button></div></div>
+
+    </details>
+
+    <!-- ============================================================
+         R516 — WAY #2: VTK → XrayObservation v2 VALIDATION
+         ------------------------------------------------------------
+         Observation-boundary test only. No reconstruction is called.
+         ============================================================ -->
+    <section class="r578-way" id="xrayWay2Workflow" style="border:2px solid #1769aa;">
+        <div class="r578-section-title">Way 2 — Image marking → observation validation</div>
+        <div class="r578-way-note">One synthetic generator: click Load Synthetic AP to open the R257 configuration popup if no case has been generated. Set the complete configuration and press Run, then click Load Synthetic AP again. Way 2 never creates an independent default case; LAT reuses the exact same generated case and selected LAT camera angle.</div>
+        <div style="font-size:13px;line-height:1.45;margin-bottom:10px;">
+R540 adds the next stage after this boundary: finalize AP + LAT, then run the resulting renderer-neutral observation set through the existing protected Reconstruction engine. No reconstruction mathematics is changed.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" id="r514LoadAPButton">Load Synthetic AP</button>
+            <button type="button" id="r514ValidateAPButton">Validate AP</button>
+            <button type="button" id="r641CoordinateAuditAPButton">R641 Audit AP Coordinates</button>
+            <button type="button" id="r641CoordinateAuditLATButton">R641 Audit LAT Coordinates</button>
+            <button type="button" id="r514LoadLATButton">Load Synthetic LAT</button>
+            <button type="button" id="r514ValidateLATButton">Validate LAT</button>
+            <button type="button" id="r514FinalizeButton">Finalize AP + LAT</button>
+            <button type="button" id="r540RunReconstructionButton">Run Protected Reconstruction</button>
+        </div>
+        <div id="r514ObservationStatus" style="margin-top:10px;font-family:monospace;white-space:pre-wrap;">R516 — Waiting</div>
+        <pre id="r514ObservationOutput" style="margin-top:8px;max-height:520px;overflow:auto;white-space:pre-wrap;background:#f5f5f5;padding:8px;">No R514 observation data yet.</pre>
+<div class="xray-copy-results-row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;"><button type="button" class="xray-copy-results-button" data-copy-target="r514ObservationOutput" style="padding:5px 10px;font-size:13px;cursor:pointer;">Copy results</button></div>
+    </section>
+
+
+    <details class="r578-way" id="xrayLegacyVtkDiagnostics">
+      <summary>Legacy VTK integration diagnostic</summary>
+      <p class="r578-way-note">Secondary historical iframe retained for integration debugging. The primary AP/LAT panels above remain the normal image workflow.</p>
+    <!-- ============================================================
+         R197 — EMBED PROVEN R152 VTK APPLICATION
+         ------------------------------------------------------------
+         The VTK application is the existing Vite-built R152 test.
+    
+         Persistent files are stored in:
+    
+         Simulation/VTK_Test/vtk_dist/
+    
+         Flask exposes them through:
+    
+         VTK_Test/vtk_dist/
+    
+         This iframe does NOT modify the VTK application.
+         It only embeds the already-proven R152 application inside
+         the X-ray Reconstruction workspace.
+    
+         R197 purpose:
+           Prove X-ray SPA → VTK application integration.
+    
+         VTK application capabilities already proven in R152:
+           - image loading
+           - DICOM loading
+           - multiple LineWidgets
+           - line endpoint coordinates
+           - pixel coordinates
+           - world coordinates
+         ============================================================ -->
+    
+    <div style="
+        border:1px solid #ccc;
+        padding:12px;
+        border-radius:6px;
+        margin-bottom:16px;
+    ">
+    
+        <div style="
+            font-weight:700;
+            margin-bottom:8px;
+        ">
+            Legacy VTK integration / bridge diagnostic
+        </div>
+
+        <!-- ============================================================
+             VTK → X-ray observation bridge TEST
+             ============================================================ -->
+        
+        <div style="
+            border:1px solid #ccc;
+            padding:12px;
+            border-radius:6px;
+            margin-bottom:16px;
+        ">
+        
+            <div style="
+                font-weight:700;
+                margin-bottom:8px;
+            ">
+                R198 — VTK → X-RAY OBSERVATION BRIDGE
+            </div>
+        
+            <div id="xrayVtkObservationBridgeStatus"
+                 style="margin-bottom:8px;">
+                Waiting for XrayObservation v1...
+            </div>
+
+            <button
+                type="button"
+                id="xrayRefreshObservationButton"
+                style="margin-bottom:8px;">
+                Refresh Observation
+            </button>
+        
+            <pre id="xrayVtkObservationBridgeData"
+                 style="
+                    max-height:300px;
+                    overflow:auto;
+                    white-space:pre-wrap;
+                    background:#f7f7f7;
+                    padding:8px;
+                 ">No observation received yet.</pre>
+<div class="xray-copy-results-row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;"><button type="button" class="xray-copy-results-button" data-copy-target="xrayVtkObservationBridgeData" style="padding:5px 10px;font-size:13px;cursor:pointer;">Copy results</button></div>
+        
+        </div>
+
+        <div style="
+            margin-top:10px;
+            font-size:0.92em;
+        ">
+            The JSON below is the renderer-neutral boundary exported by the
+            VTK annotation iframe. It must contain only plain data — no VTK
+            widget, actor, mapper, renderer, or representation objects.
+        </div>
+
+    
+        <div style="
+            margin-bottom:10px;
+        ">
+            R152 Vite application embedded from
+            <code>VTK_Test/vtk_dist/</code>
+        </div>
+    
+        <iframe
+            id="xrayVtkFrame"
+            src="./VTK_Test/vtk_dist/index.html"
+            title="VTK X-ray Annotation"
+            style="
+                width:100%;
+                height:850px;
+                border:1px solid #aaa;
+                border-radius:4px;
+                display:block;
+            ">
+        </iframe>
+    
+    </div>
+
+    </details>
+
+    <!-- ============================================================
+         CURRENT — RECONSTRUCTION ENGINE / CASE HANDOFF
+         ============================================================ -->
+    
+    <div style="
+        border:1px solid #ccc;
+        padding:12px;
+        border-radius:6px;
+        margin-bottom:16px;
+    ">
+    
+        <div style="
+            font-weight:700;
+            margin-bottom:8px;
+        ">
+            Way 3 — Reconstruction review and CASE handoff
+        </div>
+ 
+        <details class="r578-way" id="xrayR257RoundTripDiagnostic" style="margin:0 0 10px;padding:8px;">
+          <summary>Synthetic round-trip regression (engineering test)</summary>
+          <p class="r578-way-note">Uses known synthetic truth to test reconstruction. It is not a clinical case workflow.</p>
+          <button type="button" data-reconstruction-synthetic-test="runR257ClinicalRoundTripTest">Run synthetic round-trip test</button>
+ 
+        <button
+            type="button"
+            id="downloadReconstructionSyntheticTestResultButton"
+            disabled
+        >
+            Download JSON Result
+        </button>
+
+        <button
+            type="button"
+            id="downloadReconstructionSyntheticTestHumanResultButton"
+            disabled
+        >
+            Download Human Report
+        </button> 
+        
+        </details>
+
+        <div class="r578-section-title">Reconstruct and review</div>
+        <div class="r578-way-note">Run the existing engine, inspect the result, then explicitly apply the reconstructed parameters to the CASE.</div>
+        <div class="r578-action-row">
+        <button
+            type="button"
+            id="xrayCallReconstructionButton"
+        >
+            Call Reconstruction Engine
+        </button>
+
+        <button
+            type="button"
+            id="xrayApplyReconstructionButton"
+            style="margin-top:8px;"
+        >
+            Apply Reconstructed CASE
+        </button>
+        </div>
+ 
+        <div
+            id="xrayReconstructionApiStatus"
+            style="
+                margin-top:8px;
+            "
+        >
+            Waiting for reconstruction...
+        </div>
+    
+        <pre
+            id="xrayReconstructionApiOutput"
+            style="
+                margin-top:10px;
+                max-height:300px;
+                overflow:auto;
+                white-space:pre-wrap;
+            "
+        >No reconstruction result.</pre>
+<div class="xray-copy-results-row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;"><button type="button" class="xray-copy-results-button" data-copy-target="xrayReconstructionApiOutput" style="padding:5px 10px;font-size:13px;cursor:pointer;">Copy results</button></div>
+    
+    </div>
+
+    <!-- =====================================================
+         CASE
+         ===================================================== -->
+
+    <h3>Current CASE status</h3>
+
+    <pre id="xrayCaseStatus"
+         style="
+            max-height:300px;
+            overflow:auto;
+            white-space:pre-wrap;
+         ">Waiting for CASE...</pre>
+<div class="xray-copy-results-row" style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;"><button type="button" class="xray-copy-results-button" data-copy-target="xrayCaseStatus" style="padding:5px 10px;font-size:13px;cursor:pointer;">Copy results</button></div>
+
+    </div><!-- /#xrayDeveloperDiagnostics -->
+</div><!-- /.mountingCard -->
+

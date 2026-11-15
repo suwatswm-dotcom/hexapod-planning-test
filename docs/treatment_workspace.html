@@ -1,0 +1,318 @@
+<div class="planningDesk">
+
+    <!-- ========================================= -->
+    <!-- LEFT PANEL                                -->
+    <!-- ========================================= -->
+
+    <div class="leftPanel">
+    
+        <h2>
+    
+            Treatment
+    
+        </h2>
+
+        <div class="section">
+
+            <h3>
+                Planning Mode
+            </h3>
+
+            <div class="plannerModeOptions">
+
+                <label style="display:block;">
+                    <input
+                        type="radio"
+                        name="planner_mode"
+                        value="normal">
+                    Normal Planning
+                </label>
+
+                <label style="display:block;">
+                    <input
+                        type="radio"
+                        name="planner_mode"
+                        value="verification">
+                    Prescription Verification
+                </label>
+
+            </div>
+
+            <div style="margin-top:10px;padding:9px 10px;border:1px solid #c58b32;border-left:4px solid #c58b32;border-radius:4px;background:#fff8e8;color:#5d4215;font-size:12px;line-height:1.45;">
+                <strong>R1172.0 · TEMPORARY PREVIEW SCHEDULE MODE</strong><br>
+                Normal Planning generates legacy fixed-duration daily rows for animation and engineering review. It does not enforce the strict JavaScript daily movement limits or certify clinical target attainment. Do not use these preview schedules as approved patient prescriptions.
+            </div>
+
+        </div>
+        
+        <div class="section">
+    
+            <h3>
+    
+                Current Phase
+    
+            </h3>
+
+            <div
+                id="currentPhaseLink"
+                class="phaseDashboardLink">
+    
+                Phase 1 (1/1) ✎
+    
+            </div>
+    
+        </div>
+    
+        <div class="section">
+    
+            <h3>
+    
+                Phase Target
+    
+            </h3>
+    
+            <div
+                id="phase_target_summary">
+    
+            </div>
+    
+        </div>
+    
+        <div class="section">
+    
+            <h3>
+    
+                Residual Deformity
+    
+            </h3>
+    
+            <div
+                id="tp_residual">
+    
+                (Planner not run)
+    
+            </div>
+    
+        </div>
+    
+        <div class="section">
+    
+            <h3>
+    
+                Treatment Start Date
+    
+            </h3>
+    
+            <div class="plannerInputRow">
+    
+                <input
+                    id="tp_start_date"
+                    type="date"
+                    class="parameterValue">
+    
+            </div>
+    
+            <div class="plannerCheckbox">
+            
+                <input
+                    id="splitAdjustmentCheckbox"
+                    type="checkbox">
+            
+                <label
+                    for="splitAdjustmentCheckbox">
+            
+                    Two adjustments per day
+            
+                </label>
+            
+            </div>
+    
+            <button
+                id="updateAdjustmentPlanButton"
+                class="moduleButton">
+    
+                Update Adjustment Plan
+    
+            </button>
+
+
+            <button
+                id="undoPlanningButton"
+                class="moduleButton"
+                type="button"
+                disabled>
+    
+                Undo
+    
+            </button>
+    
+        </div>
+    
+        <div
+            class="section"
+            id="plannerStatusSection">
+    
+            <h3>
+    
+                Planner Status
+    
+            </h3>
+    
+            <div
+                id="tp_planner_status">
+    
+                Not generated
+    
+            </div>
+    
+        </div>
+    
+        <div
+            class="section"
+            id="warningsSection"
+            style="display:none;">
+    
+            <h3>
+    
+                Warnings
+    
+            </h3>
+    
+            <div
+                id="tp_warnings">
+    
+            </div>
+    
+        </div>
+    
+        <div class="workflowButtons">
+
+            <div class="section">
+            
+            <h3>
+            
+            Treatment Approval
+            
+            </h3>
+            
+            <button
+                id="approvePlanButton"
+                class="moduleButton">
+    
+                Approve Plan
+    
+            </button>
+            
+            </div>
+    
+        </div>
+    
+    </div>
+
+    <!-- ========================================= -->
+    <!-- RIGHT PANEL                               -->
+    <!-- ========================================= -->
+
+    <div class="rightPanel">
+        <div class="workspaceTabs">
+            <button
+                id="treatmentSimTab"
+                class="moduleButton">
+
+                Treatment Simulation
+
+            </button>
+
+            <button
+                id="strutAdjustmentTab"
+                class="moduleButton">
+
+                Strut Adjustment Plan
+
+            </button>
+            <button
+                id="strutSwapCalendarTab"
+                class="moduleButton">
+
+                Strut Swaps Calendar
+
+            </button>
+            <button
+                id="threePrototypeTab"
+                class="moduleButton">
+
+                Three.js Prototype
+
+            </button>
+        </div>
+        <div id="planningWorkspace">
+            <div id="treatmentSimWorkspace">
+                <div id="simulationHost"></div>
+                
+  <button type="button" onclick="testSimulationGeometry()">
+    TEST Simulation Geometry
+</button>              
+                
+ <div id="simulationDebug"></div>
+ 
+            </div>
+            <div
+                id="strutAdjustmentWorkspace"
+                style="display:none;">
+
+                <div id="adjustmentPlanContainer">
+                
+                </div>
+            </div>
+            <div
+                id="strutSwapCalendarWorkspace"
+                style="display:none;">
+                <div>
+                    Coming in a future version
+                </div>
+            </div>
+            <div
+                id="threePrototypeWorkspace"
+                style="display:none;">
+
+                <div
+                    id="threePrototypeStatus"
+                    role="status"
+                    aria-live="polite"
+                    style="padding:8px 10px;font:12px/1.45 monospace;white-space:pre-wrap;">
+                    Open this tab to publish the current SimulationFrameV1 contract and start Three.js.
+                </div>
+                <iframe
+                    id="threePrototypeFrame"
+                    style="
+                        width:100%;
+                        height:650px;
+                        border:0;
+                        display:block;
+                    "
+                    title="Three.js Prototype">
+                </iframe>
+
+            </div>
+            <div
+                id="plannerOverlay"
+                class="plannerOverlay">
+                <div class="plannerOverlayPanel">
+                    <div class="plannerSpinner"></div>
+                    <div class="plannerOverlayTitle">
+                        Generating Adjustment Plan
+                    </div>
+                    <div class="plannerOverlayMessage">
+                        Computing daily strut adjustments...
+                    </div>
+                    <div class="plannerOverlayHint">
+                        Please wait...
+                    </div>
+                </div>
+            </div>            
+            
+        </div>
+    </div>
+</div>
+
+<script src="./treatment.js?v=R1172.0"></script>

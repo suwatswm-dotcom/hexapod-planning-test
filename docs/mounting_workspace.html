@@ -1,0 +1,255 @@
+<h2>Mounting Parameters</h2>
+
+<div class="mountingCard">
+
+    <h3>AP View</h3>
+
+    <div class="mountingRow">
+
+        <div class="mountingLabel">
+            Reference ring center
+        </div>
+
+        <input
+            id="mount_ap_offset"
+            type="number"
+            step="0.1">
+
+        <span class="unit">mm</span>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_ap_offset_dir"
+                value="lateral">
+            Lateral
+        </label>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_ap_offset_dir"
+                value="medial">
+            Medial
+        </label>
+
+        <span class="mountingGuide">
+            to the Reference Point
+        </span>
+
+    </div>
+
+    <div class="mountingRow">
+
+        <div class="mountingLabel">
+            Reference ring lateral side
+        </div>
+
+        <input
+            id="mount_ap_tilt"
+            type="number"
+            step="0.1">
+
+        <span class="unit">°</span>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_ap_tilt_dir"
+                value="proximal">
+            Proximally
+        </label>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_ap_tilt_dir"
+                value="distal">
+            Distally
+        </label>
+
+        <span class="mountingGuide">
+            tilted
+        </span>
+
+    </div>
+
+</div>
+
+
+
+<div class="mountingCard">
+
+    <h3>LAT View</h3>
+
+    <div class="mountingRow">
+
+        <div class="mountingLabel">
+            Reference ring center
+        </div>
+
+        <input
+            id="mount_lat_offset"
+            type="number"
+            step="0.1">
+
+        <span class="unit">mm</span>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_lat_offset_dir"
+                value="anterior">
+            Anterior
+        </label>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_lat_offset_dir"
+                value="posterior">
+            Posterior
+        </label>
+
+        <span class="mountingGuide">
+            to the Reference Point
+        </span>
+
+    </div>
+
+    <div class="mountingRow">
+
+        <div class="mountingLabel">
+            Reference ring anterior side
+        </div>
+
+        <input
+            id="mount_lat_tilt"
+            type="number"
+            step="0.1">
+
+        <span class="unit">°</span>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_lat_tilt_dir"
+                value="proximal">
+            Proximally
+        </label>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_lat_tilt_dir"
+                value="distal">
+            Distally
+        </label>
+
+        <span class="mountingGuide">
+            tilted
+        </span>
+
+    </div>
+
+</div>
+
+
+
+<div class="mountingCard">
+
+    <h3>Axial View</h3>
+
+    <div class="mountingRow">
+
+        <div class="mountingLabel">
+            Reference ring center
+        </div>
+
+        <input
+            id="mount_axial_offset"
+            type="number"
+            step="0.1">
+
+        <span class="unit">mm</span>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_axial_offset_dir"
+                value="proximal">
+            Proximal
+        </label>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_axial_offset_dir"
+                value="distal">
+            Distal
+        </label>
+
+        <span class="mountingGuide">
+            to the Reference Point
+        </span>
+
+    </div>
+
+    <div class="mountingRow">
+
+        <div class="mountingLabel">
+            Master tab
+        </div>
+
+        <input
+            id="mount_master_rotation"
+            type="number"
+            step="0.1">
+
+        <span class="unit">°</span>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_master_rotation_dir"
+                value="internal">
+            Internal
+        </label>
+
+        <label>
+            <input
+                type="radio"
+                name="mount_master_rotation_dir"
+                value="external">
+            External
+        </label>
+
+        <span class="mountingGuide">
+            rotated
+        </span>
+
+    </div>
+
+</div>
+
+
+<div id="buttons">
+
+    <button id="resetButton">
+        Reset Page
+    </button>
+
+    <button id="previousButton">
+        Previous
+    </button>
+
+    <button id="nextButton">
+        Next
+    </button>
+
+</div>
+
+<script src="./mounting.js"></script>
+
+
+

@@ -1,0 +1,253 @@
+<h2>Deformity</h2>
+
+<div class="mountingCard">
+
+<h3>Coronal Plane</h3>
+
+<div class="mountingRow">
+<div class="mountingLabel">AP Translation</div>
+<input id="ap_translation" type="number">
+<div class="unit">mm</div>
+
+<label>
+<input type="radio" name="ap_translation_direction" value="lateral">
+<span>Lateral</span>
+</label>
+
+<label>
+<input type="radio" name="ap_translation_direction" value="medial">
+<span>Medial</span>
+</label>
+
+<div class="mountingGuide">
+? to Reference Point
+</div>
+</div>
+
+
+<div class="mountingRow">
+<div class="mountingLabel">AP Angulation</div>
+<input id="ap_angulation" type="number">
+<div class="unit">°</div>
+
+<label>
+<input type="radio" name="ap_angulation_direction" value="valgus">
+<span>Valgus</span>
+</label>
+
+<label>
+<input type="radio" name="ap_angulation_direction" value="varus">
+<span>Varus</span>
+</label>
+
+<div class="mountingGuide">
+? AP view
+</div>
+</div>
+
+</div>
+
+
+<div class="mountingCard">
+
+<h3>Sagittal Plane</h3>
+
+<div class="mountingRow">
+<div class="mountingLabel">LAT Translation</div>
+<input id="lat_translation" type="number">
+<div class="unit">mm</div>
+
+<label>
+<input type="radio" name="lat_translation_direction" value="anterior">
+<span>Anterior</span>
+</label>
+
+<label>
+<input type="radio" name="lat_translation_direction" value="posterior">
+<span>Posterior</span>
+</label>
+
+<div class="mountingGuide">
+? to Reference Point
+</div>
+</div>
+
+
+<div class="mountingRow">
+<div class="mountingLabel">LAT Angulation</div>
+<input id="lat_angulation" type="number">
+<div class="unit">°</div>
+
+<label>
+<input type="radio" name="lat_angulation_direction" value="anterior">
+<span>Anterior</span>
+</label>
+
+<label>
+<input type="radio" name="lat_angulation_direction" value="posterior">
+<span>Posterior</span>
+</label>
+
+<div class="mountingGuide">
+? LAT view
+</div>
+</div>
+
+</div>
+
+<div class="mountingCard">
+
+<h3>Axial</h3>
+
+<div class="mountingRow">
+<div class="mountingLabel">Bone Length</div>
+<input id="bone_length" type="number">
+<div class="unit">mm</div>
+
+<label>
+<input type="radio" name="bone_length_direction" value="short">
+<span>Too Short</span>
+</label>
+
+<label>
+<input type="radio" name="bone_length_direction" value="long">
+<span>Too Long</span>
+</label>
+
+<div class="mountingGuide">
+? Bone Axis
+</div>
+</div>
+
+
+<div class="mountingRow">
+<div class="mountingLabel">Bone Rotation</div>
+<input id="bone_rotation" type="number">
+<div class="unit">°</div>
+
+<label>
+<input type="radio" name="bone_rotation_direction" value="internal">
+<span>Internal</span>
+</label>
+
+<label>
+<input type="radio" name="bone_rotation_direction" value="external">
+<span>External</span>
+</label>
+
+<div class="mountingGuide">
+? Bone Axis
+</div>
+</div>
+
+</div>
+
+
+<div class="mountingCard">
+
+<h3>
+<label>
+<input id="loc_enabled" type="checkbox">
+Location of Concern (LOC)
+</label>
+</h3>
+
+<div id="locSection" style="display:none;">
+
+<div class="mountingRow">
+<div class="mountingLabel">AP Offset</div>
+<input id="loc_ap_offset" type="number">
+<div class="unit">mm</div>
+
+<label>
+<input type="radio" name="loc_ap_direction" value="lateral">
+<span>Lateral</span>
+</label>
+
+<label>
+<input type="radio" name="loc_ap_direction" value="medial">
+<span>Medial</span>
+</label>
+
+<div class="mountingGuide">
+? to Reference Point
+</div>
+</div>
+
+
+<div class="mountingRow">
+<div class="mountingLabel">LAT Offset</div>
+<input id="loc_lat_offset" type="number">
+<div class="unit">mm</div>
+
+<label>
+<input type="radio" name="loc_lat_direction" value="anterior">
+<span>Anterior</span>
+</label>
+
+<label>
+<input type="radio" name="loc_lat_direction" value="posterior">
+<span>Posterior</span>
+</label>
+
+<div class="mountingGuide">
+? to Reference Point
+</div>
+</div>
+
+
+<div class="mountingRow">
+<div class="mountingLabel">Axial Offset</div>
+<input id="loc_axial_offset" type="number">
+<div class="unit">mm</div>
+
+<label>
+<input type="radio" name="loc_axial_direction" value="proximal">
+<span>Proximal</span>
+</label>
+
+<label>
+<input type="radio" name="loc_axial_direction" value="distal">
+<span>Distal</span>
+</label>
+
+<div class="mountingGuide">
+? along Bone Axis
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+<div id="buttons">
+
+    <button id="resetButton">
+
+        Reset Workflow
+
+    </button>
+
+    <button id="previousButton">
+
+        Previous
+
+    </button>
+
+    <button id="nextButton">
+
+        Next
+
+    </button>
+
+</div>
+
+
+<script src="./deformity.js"></script>
+
+
+

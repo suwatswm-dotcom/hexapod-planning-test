@@ -1,0 +1,185 @@
+<h2>Phases</h2>
+
+<div class="section">
+
+   <!-- <div class="phaseTabsRow"> -->
+        <div class="workspaceTabs"> 
+        <div
+            id="phase_tabs"
+            class="phaseTabs">
+
+        </div>
+
+
+    </div>
+
+    <div class="phaseEditorCard">
+    
+        <div class="phaseSection">
+   
+    
+            <div class="fieldRow">
+    
+                <label class="fieldLabel">
+                    Phase Name
+                </label>
+    
+                <input
+                    id="stage_name"
+                    class="textField"
+                    type="text"
+                >
+    
+            </div>
+    
+            <div class="fieldRow">
+    
+                <label class="fieldLabel">
+                    Notes
+                </label>
+    
+                <textarea
+                    id="stage_notes"
+                    class="notesField"
+                    rows="3"
+                ></textarea>
+    
+            </div>
+    
+        </div>
+
+<div class="sectionTitle">TARGET</div>
+
+<div class="mountingCard">
+
+<h3>Coronal Plane</h3>
+
+<div class="mountingRow">
+<div class="mountingLabel">AP Translation</div>
+<input id="ap_translation_value" class="numberField" type="number">
+<div class="unit">mm</div>
+<label><input id="ap_translation_lateral" type="radio" name="ap_translation_direction" value="lateral"><span>Lateral</span></label>
+<label><input id="ap_translation_medial" type="radio" name="ap_translation_direction" value="medial"><span>Medial</span></label>
+<div class="mountingGuide">??</div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">AP Angulation</div>
+<input id="ap_angulation_value" class="numberField" type="number">
+<div class="unit">°</div>
+<label><input id="ap_angulation_valgus" type="radio" name="ap_angulation_direction" value="valgus"><span>Valgus</span></label>
+<label><input id="ap_angulation_varus" type="radio" name="ap_angulation_direction" value="varus"><span>Varus</span></label>
+<div class="mountingGuide">??</div>
+</div>
+
+</div>
+
+
+<div class="mountingCard">
+
+<h3>Sagittal Plane</h3>
+
+<div class="mountingRow">
+<div class="mountingLabel">LAT Translation</div>
+<input id="lat_translation_value" class="numberField" type="number">
+<div class="unit">mm</div>
+<label><input id="lat_translation_anterior" type="radio" name="lat_translation_direction" value="anterior"><span>Anterior</span></label>
+<label><input id="lat_translation_posterior" type="radio" name="lat_translation_direction" value="posterior"><span>Posterior</span></label>
+<div class="mountingGuide">??</div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">LAT Angulation</div>
+<input id="lat_angulation_value" class="numberField" type="number">
+<div class="unit">°</div>
+<label><input id="lat_angulation_anterior" type="radio" name="lat_angulation_direction" value="anterior"><span>Anterior</span></label>
+<label><input id="lat_angulation_posterior" type="radio" name="lat_angulation_direction" value="posterior"><span>Posterior</span></label>
+<div class="mountingGuide">??</div>
+</div>
+
+</div>
+
+
+<div class="mountingCard">
+
+<h3>Axial</h3>
+
+<div class="mountingRow">
+<div class="mountingLabel">Bone Length</div>
+<input id="bone_length_value" class="numberField" type="number">
+<div class="unit">mm</div>
+<label><input id="bone_length_short" type="radio" name="bone_length_direction" value="short"><span>Too Short</span></label>
+<label><input id="bone_length_long" type="radio" name="bone_length_direction" value="long"><span>Too Long</span></label>
+<div class="mountingGuide">??</div>
+</div>
+
+<div class="mountingRow">
+<div class="mountingLabel">Bone Rotation</div>
+<input id="bone_rotation_value" class="numberField" type="number">
+<div class="unit">°</div>
+<label><input id="bone_rotation_internal" type="radio" name="bone_rotation_direction" value="internal"><span>Internal</span></label>
+<label><input id="bone_rotation_external" type="radio" name="bone_rotation_direction" value="external"><span>External</span></label>
+<div class="mountingGuide">??</div>
+</div>
+
+    </div>
+
+        <div class="futureSection">
+
+            <div class="sectionTitle">
+                FUTURE
+            </div>
+
+            <div class="futureText">
+
+                Maximum mm/day<br>
+
+                Maximum deg/day<br>
+
+                Location of Concern
+
+            </div>
+
+        </div>
+
+
+        <div class="autosaveNotice">
+
+            Changes are saved automatically.
+
+        </div>
+
+</div>
+
+
+
+    <div class="buttons">
+
+        <button id="plannerButton">
+
+            Treatment Plan
+
+        </button>
+
+    </div>
+
+</div>
+
+<div class="workflowButtons">
+
+    <button id="previousButton">
+
+        ◀ Previous
+
+    </button>
+
+    <button id="nextButton">
+
+        Next ▶
+
+    </button>
+
+</div>
+
+<script src="./phases.js"></script>
+
