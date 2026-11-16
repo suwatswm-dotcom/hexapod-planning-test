@@ -330,7 +330,18 @@ window.resetActiveCaseForModeSwitch = async function(reason){
 
 // R1143 — Connected-first, mutually exclusive mode panels with automatic transitions.
 function initializeOperatingModeControls(){
+    const standaloneEnabled = window.APP_FEATURES?.standaloneModeEnabled === true;
     const standaloneCard=document.getElementById('r1141OperatingModeCard');
+    const showStandaloneControl=document.getElementById('r1143ShowStandalone');
+    if (!standaloneEnabled) {
+        if (standaloneCard) standaloneCard.hidden = true;
+        if (showStandaloneControl) {
+            const controlLabel = showStandaloneControl.closest('label');
+            if (controlLabel) controlLabel.hidden = true;
+            showStandaloneControl.checked = false;
+            showStandaloneControl.disabled = true;
+        }
+    }
     if(!standaloneCard || standaloneCard.dataset.r1143Bound==='1') return;
     standaloneCard.dataset.r1143Bound='1';
     const ack=document.getElementById('r1141StandaloneAck');
@@ -351,13 +362,13 @@ function initializeOperatingModeControls(){
         lastMode=mode;
         const ready=window.__APP_STARTUP_STATE==='ready';
         const pending=!!window.__APP_MODE_TRANSITION_PENDING;
-        const standaloneOptions=!!showStandalone?.checked;
+        const standaloneOptions=standaloneEnabled && !!showStandalone?.checked;
         const connectedOptions=!!showConnected?.checked;
         const canEnterStandalone=(mode==='signed-out' || mode==='connected');
         if(button) button.disabled=!(ready && !!ack?.checked && !pending && canEnterStandalone);
         if(cloudCard) cloudCard.hidden=(mode==='standalone' && !connectedOptions);
         if(standaloneCard) standaloneCard.hidden=(mode!=='standalone' && !standaloneOptions);
-        if(showStandalone){showStandalone.checked=standaloneOptions;showStandalone.disabled=pending || mode==='standalone';}
+        if(showStandalone){showStandalone.checked=standaloneOptions;showStandalone.disabled=!standaloneEnabled || pending || mode==='standalone';}
         if(showConnected){showConnected.checked=connectedOptions;showConnected.disabled=pending || mode!=='standalone';}
         // Highlight only the active mode heading, leaving the surrounding cards neutral.
         const setHeadingActive=(heading,active)=>{
@@ -371,7 +382,7 @@ function initializeOperatingModeControls(){
         setHeadingActive(connectedHeading,mode==='connected');
         setHeadingActive(standaloneHeading,mode==='standalone');
         if(mode==='connected'){
-            say('CONNECTED MODE ACTIVE · Authenticated cloud storage is active. Select “Switch to Standalone” to review the local-storage acknowledgement.');
+            say(standaloneEnabled ? 'CONNECTED MODE ACTIVE · Authenticated cloud storage is active. Standalone can be enabled from the application feature flag.' : 'CONNECTED MODE ACTIVE · Authenticated cloud storage is active. Standalone mode is disabled by the application feature flag.');
         }else if(mode==='standalone' && connectedOptions){
             say('STANDALONE MODE IS STILL ACTIVE · The Connected panel is only being displayed. Sign in there to leave Standalone Mode. The privacy acknowledgement will clear after Connected Mode is successfully entered.');
         }else if(mode==='standalone'){
@@ -379,13 +390,14 @@ function initializeOperatingModeControls(){
         }else if(mode==='resolving'){
             say('CHECKING SESSION · Choose a mode after session verification finishes.');
         }else{
-            say('SIGNED OUT · Sign in for Connected Mode, or explicitly choose Standalone Mode. Local recovery is inactive.');
+            say(standaloneEnabled ? 'SIGNED OUT · Sign in for Connected Mode, or explicitly choose Standalone Mode.' : 'SIGNED OUT · Sign in for Connected Mode. Standalone mode is disabled by the application feature flag.');
         }
     };
     showStandalone?.addEventListener('change',update);
     showConnected?.addEventListener('change',update);
     ack?.addEventListener('change',update);
     button?.addEventListener('click',async()=>{
+        if (!standaloneEnabled) { say('STANDALONE DISABLED · The application feature flag is OFF.'); return; }
         if(button.disabled || window.__APP_STARTUP_STATE!=='ready' || window.__APP_MODE_TRANSITION_PENDING) return;
         button.disabled=true;
         window.__APP_MODE_TRANSITION_PENDING=true;

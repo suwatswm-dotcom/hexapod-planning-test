@@ -1,10 +1,11 @@
 {
-  "build": "R1172.7.1",
+  "build": "R1172.8.0",
   "entry": "index.html",
   "hostMode": "static",
   "includedFiles": [
     "shared.css",
     "shared.js",
+    "app_features.js",
     "app.js",
     "case_change_coordinator.js",
     "workspace_manager.js",

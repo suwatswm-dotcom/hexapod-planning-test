@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <base href="./">
 <script>
-window.APP_BUILD = "R1172.7.1";
+window.APP_BUILD = "R1172.8.0";
 window.APP_HOST_MODE = "static";
 window.appAssetUrl = function(path){
   const clean = String(path || "").replace(/^\/+/, "");
@@ -17,7 +17,7 @@ window.appAssetUrl = function(path){
 </head>
 <body>
 <div id="header">
-<div id="title">- SPA - Orthopedic Hexapod Planning & Simulation · R1172.7.1</div>
+<div id="title">- SPA - Orthopedic Hexapod Planning & Simulation · R1172.8.0</div>
 <div id="caseRow">Case : <input id="shellCaseName" value="Demo Case, x hard coded !!"></div>
 <div id="menu">
 <a href="#patient" data-workspace="patient">Patient</a> |
@@ -31,10 +31,10 @@ window.appAssetUrl = function(path){
 </div>
 <hr>
 </div>
-<script src="./shared.js?v=R1172.7.1"></script>
+<script src="./shared.js?v=R1172.8.0"></script>
 
 <details style="padding:8px 10px;border-top:1px solid #888;font:12px/1.45 monospace;">
-  <summary>R1172.7.1 · Static-host-compatible browser architecture</summary>
+  <summary>R1172.8.0 · Static-host-compatible browser architecture</summary>
   <div role="status" style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px;">
 Normal Planning: browser JavaScript, temporary PYTHON_COMPAT fixed-duration preview schedule mode.
 Prescription Verification: browser JavaScript.
@@ -47,37 +47,38 @@ CASE → mechanical parameters: browser JavaScript for active CASE sync; Python 
   </div>
 </details>
 <!-- R1154 browser FK shadow modules: shared.js must load first. -->
-<script src="./mechanics.js?v=R1172.7.1"></script>
+<script src="./mechanics.js?v=R1172.8.0"></script>
 <!-- Browser planner dependency chain. Stable descriptive filenames; keep this order. -->
-<script src="./hardware_spec.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('hardware_spec.js')"></script>
-<script src="./case_mechanics_recovery.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('case_mechanics_recovery.js')"></script>
-<script src="./planner_mechanics.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_mechanics.js')"></script>
-<script src="./planner_candidates.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_candidates.js')"></script>
-<script src="./planner_trajectory.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_trajectory.js')"></script>
-<script src="./treatment_orchestration.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('treatment_orchestration.js')"></script>
-<script src="./case_phase_executor.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('case_phase_executor.js')"></script>
-<script src="./prescription_verification.js?v=R1172.7.1" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('prescription_verification.js')"></script>
-<script src="./case_change_coordinator.js?v=R1172.7.1"></script>
-<script src="./workspace_manager.js?v=R1172.7.1"></script>
-<script src="./patient.js?v=R1172.7.1"></script>
-<script src="./frame.js?v=R1172.7.1"></script>
-<script src="./reconstruction.js?v=R1172.7.1"></script>
-<script src="./reconstruction_synthetic_test.js?v=R1172.7.1"></script>
-<script src="./xray_reconstruction.js?v=R1172.7.1"></script>
-<script src="./case_file_service.js?v=R1172.7.1"></script>
+<script src="./hardware_spec.js?v=R1172.8.0" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('hardware_spec.js')"></script>
+<script src="./case_mechanics_recovery.js?v=R1172.8.0" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('case_mechanics_recovery.js')"></script>
+<script src="./planner_mechanics.js?v=R1172.8.0" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_mechanics.js')"></script>
+<script src="./planner_candidates.js?v=R1172.8.0" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_candidates.js')"></script>
+<script src="./planner_trajectory.js?v=R1172.8.0" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('planner_trajectory.js')"></script>
+<script src="./treatment_orchestration.js?v=R1172.8.0" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('treatment_orchestration.js')"></script>
+<script src="./case_phase_executor.js?v=R1172.8.0" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('case_phase_executor.js')"></script>
+<script src="./prescription_verification.js?v=R1172.8.0" onerror="window.__PLANNER_DEP_LOAD_ERRORS=(window.__PLANNER_DEP_LOAD_ERRORS||[]).concat('prescription_verification.js')"></script>
+<script src="./case_change_coordinator.js?v=R1172.8.0"></script>
+<script src="./workspace_manager.js?v=R1172.8.0"></script>
+<script src="./app_features.js?v=R1172.8.0"></script>
+<script src="./patient.js?v=R1172.8.0"></script>
+<script src="./frame.js?v=R1172.8.0"></script>
+<script src="./reconstruction.js?v=R1172.8.0"></script>
+<script src="./reconstruction_synthetic_test.js?v=R1172.8.0"></script>
+<script src="./xray_reconstruction.js?v=R1172.8.0"></script>
+<script src="./case_file_service.js?v=R1172.8.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="./supabase_case_storage.js?v=R1172.7.1"></script>
-<script src="./connected_case_autosave.js?v=R1172.7.1"></script>
-<script src="./deformity.js?v=R1172.7.1"></script>
-<script src="./mounting.js?v=R1172.7.1"></script>
-<script src="./phases.js?v=R1172.7.1"></script>
-<script src="./treatment.js?v=R1172.7.1"></script>
-<script src="./case_recovery.js?v=R1172.7.1" onerror="window.__CASE_RECOVERY_SCRIPT_R1128_ERROR=true"></script>
-<script src="./diagnostics_manager.js?v=R1172.7.1"></script>
-<script src="./diagnostic_window_manager.js?v=R1172.7.1"></script>
-<script src="./diagnostics_modules.js?v=R1172.7.1"></script>
-<script src="./reports.js?v=R1172.7.1"></script>
-<script src="./app.js?v=R1172.7.1"></script>
+<script src="./supabase_case_storage.js?v=R1172.8.0"></script>
+<script src="./connected_case_autosave.js?v=R1172.8.0"></script>
+<script src="./deformity.js?v=R1172.8.0"></script>
+<script src="./mounting.js?v=R1172.8.0"></script>
+<script src="./phases.js?v=R1172.8.0"></script>
+<script src="./treatment.js?v=R1172.8.0"></script>
+<script src="./case_recovery.js?v=R1172.8.0" onerror="window.__CASE_RECOVERY_SCRIPT_R1128_ERROR=true"></script>
+<script src="./diagnostics_manager.js?v=R1172.8.0"></script>
+<script src="./diagnostic_window_manager.js?v=R1172.8.0"></script>
+<script src="./diagnostics_modules.js?v=R1172.8.0"></script>
+<script src="./reports.js?v=R1172.8.0"></script>
+<script src="./app.js?v=R1172.8.0"></script>
 <div id="workspaceHost">SPA Loading...</div>
 <div id="statusBar">Status : <span id="statusText">Ready</span></div>
 <div id="plannerRuntimeDiagnosticPanel" role="status" aria-live="polite"

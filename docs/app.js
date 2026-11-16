@@ -21,6 +21,9 @@ window.setApplicationOperatingMode = async function(mode, options = {}) {
     if (mode === "standalone" && options.explicit !== true) {
         throw new Error("Standalone mode requires an explicit user choice.");
     }
+    if (mode === "standalone" && window.APP_FEATURES?.standaloneModeEnabled !== true) {
+        throw new Error("Standalone mode is disabled by the application feature flag.");
+    }
 
     const recovery = window.CaseRecoveryDiagnostics;
     if (mode === "standalone") {
@@ -165,7 +168,7 @@ window.onload = async function(){
                 reason: connectionState?.reason || "no-authenticated-session",
                 localRecoveryStarted: false
             };
-            if (status) status.textContent = "Sign in or explicitly choose Standalone Mode. Local recovery is inactive.";
+            if (status) status.textContent = "Sign in for Connected Mode. Local recovery is currently disabled.";
         }
     } catch (error) {
         console.error("R1145.2 application startup/recovery error:", error);
@@ -179,7 +182,7 @@ window.onload = async function(){
                 ? "Ready · Connected mode"
                 : window.__APP_OPERATING_MODE === "standalone"
                     ? "Ready · Standalone mode"
-                    : "Sign in or explicitly choose Standalone Mode. Local recovery is inactive.";
+                    : "Sign in for Connected Mode. Local recovery is currently disabled.";
         }
 
     }
@@ -222,7 +225,7 @@ function initializeAppNavigation(){
             const mode = window.__APP_OPERATING_MODE;
             if (page !== "patient" && mode !== "connected" && mode !== "standalone") {
                 const status = document.getElementById("statusText");
-                if (status) status.textContent = "ACCESS BLOCKED · Sign in or explicitly choose Standalone Mode on the Patient page.";
+                if (status) status.textContent = "ACCESS BLOCKED · Sign in for Connected Mode on the Patient page.";
                 return;
             }
             if (window.__APP_MODE_TRANSITION_PENDING) {
