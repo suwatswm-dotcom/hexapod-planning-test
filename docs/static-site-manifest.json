@@ -1,5 +1,5 @@
 {
-  "build": "R1172.9.24",
+  "build": "R1172.9.25",
   "entry": "index.html",
   "hostMode": "static",
   "includedFiles": [

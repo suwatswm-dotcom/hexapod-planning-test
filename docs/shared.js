@@ -5282,11 +5282,16 @@ function loadThreePrototypeFromTreatment(){
         iframe.onerror = function(){
             iframe.dataset.viewerLoaded = "false";
             iframe.removeAttribute("src");
-            if(status){ status.style.display = "block"; status.textContent = "Three.js document failed to load. Check the Flask route /three_test.html, then reopen this tab to retry."; }
+            if(status){ status.style.display = "block"; status.textContent = "Three.js document failed to load. Confirm three_test.html is present in the deployed site at the application base path, then reopen this tab to retry."; }
         };
 
-        // First visit only. The iframe remains alive on subsequent tab visits.
-        iframe.src = "/three_test.html?v=R1172.9.24";
+        // First visit only. Resolve the viewer relative to the application base
+        // so this works both at a domain root (preview/Flask) and under a
+        // repository subpath (GitHub Pages project sites).
+        const viewerUrl = typeof window.appAssetUrl === "function"
+            ? window.appAssetUrl("three_test.html")
+            : new URL("three_test.html", document.baseURI).href;
+        iframe.src = viewerUrl + "?v=R1172.9.25";
         return true;
 
     }catch(error){
