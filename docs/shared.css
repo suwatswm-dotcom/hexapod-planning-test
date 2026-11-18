@@ -307,6 +307,35 @@ button{
     white-space:nowrap;
     margin:0;
 }
+
+/*
+   R1172.8.3 — Deformity direction selection visibility.
+   Keep the native radio control and CASE binding unchanged.
+   The transparent border on unselected labels prevents row movement.
+*/
+.mountingRow label:has(input[type="radio"]){
+    box-sizing:border-box;
+    min-height:30px;
+    padding:4px 8px;
+    border:1px solid transparent;
+    border-radius:6px;
+    transition:background-color 120ms ease, border-color 120ms ease;
+}
+.mountingRow label:has(input[type="radio"]:checked){
+    background:#e8f1f8;
+    border-color:#8db4d0;
+    color:#173f5b;
+    font-weight:600;
+}
+.mountingRow label:has(input[type="radio"]:checked) input[type="radio"]{
+    accent-color:#245f83;
+}
+.mountingRow label:has(input[type="radio"]):hover{
+    background-color:#f1f5f9;
+}
+.mountingRow label:has(input[type="radio"]:checked):hover{
+    background-color:#e2edf5;
+}
 .mountingGuide{
     color:#6b7280;
     font-style:italic;

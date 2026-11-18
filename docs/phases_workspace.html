@@ -49,6 +49,7 @@
         </div>
 
 <div class="sectionTitle">TARGET</div>
+<!-- Phase TARGET controls use phase_* IDs/names to avoid radio-group and ID collisions with Deformity. -->
 
 <div class="mountingCard">
 
@@ -56,19 +57,19 @@
 
 <div class="mountingRow">
 <div class="mountingLabel">AP Translation</div>
-<input id="ap_translation_value" class="numberField" type="number">
+<input id="phase_ap_translation_value" class="numberField" type="number">
 <div class="unit">mm</div>
-<label><input id="ap_translation_lateral" type="radio" name="ap_translation_direction" value="lateral"><span>Lateral</span></label>
-<label><input id="ap_translation_medial" type="radio" name="ap_translation_direction" value="medial"><span>Medial</span></label>
+<label><input id="phase_ap_translation_lateral" type="radio" name="phase_ap_translation_direction" value="lateral"><span>Lateral</span></label>
+<label><input id="phase_ap_translation_medial" type="radio" name="phase_ap_translation_direction" value="medial"><span>Medial</span></label>
 <div class="mountingGuide">??</div>
 </div>
 
 <div class="mountingRow">
 <div class="mountingLabel">AP Angulation</div>
-<input id="ap_angulation_value" class="numberField" type="number">
+<input id="phase_ap_angulation_value" class="numberField" type="number">
 <div class="unit">°</div>
-<label><input id="ap_angulation_valgus" type="radio" name="ap_angulation_direction" value="valgus"><span>Valgus</span></label>
-<label><input id="ap_angulation_varus" type="radio" name="ap_angulation_direction" value="varus"><span>Varus</span></label>
+<label><input id="phase_ap_angulation_valgus" type="radio" name="phase_ap_angulation_direction" value="valgus"><span>Valgus</span></label>
+<label><input id="phase_ap_angulation_varus" type="radio" name="phase_ap_angulation_direction" value="varus"><span>Varus</span></label>
 <div class="mountingGuide">??</div>
 </div>
 
@@ -81,19 +82,19 @@
 
 <div class="mountingRow">
 <div class="mountingLabel">LAT Translation</div>
-<input id="lat_translation_value" class="numberField" type="number">
+<input id="phase_lat_translation_value" class="numberField" type="number">
 <div class="unit">mm</div>
-<label><input id="lat_translation_anterior" type="radio" name="lat_translation_direction" value="anterior"><span>Anterior</span></label>
-<label><input id="lat_translation_posterior" type="radio" name="lat_translation_direction" value="posterior"><span>Posterior</span></label>
+<label><input id="phase_lat_translation_anterior" type="radio" name="phase_lat_translation_direction" value="anterior"><span>Anterior</span></label>
+<label><input id="phase_lat_translation_posterior" type="radio" name="phase_lat_translation_direction" value="posterior"><span>Posterior</span></label>
 <div class="mountingGuide">??</div>
 </div>
 
 <div class="mountingRow">
 <div class="mountingLabel">LAT Angulation</div>
-<input id="lat_angulation_value" class="numberField" type="number">
+<input id="phase_lat_angulation_value" class="numberField" type="number">
 <div class="unit">°</div>
-<label><input id="lat_angulation_anterior" type="radio" name="lat_angulation_direction" value="anterior"><span>Anterior</span></label>
-<label><input id="lat_angulation_posterior" type="radio" name="lat_angulation_direction" value="posterior"><span>Posterior</span></label>
+<label><input id="phase_lat_angulation_anterior" type="radio" name="phase_lat_angulation_direction" value="anterior"><span>Anterior</span></label>
+<label><input id="phase_lat_angulation_posterior" type="radio" name="phase_lat_angulation_direction" value="posterior"><span>Posterior</span></label>
 <div class="mountingGuide">??</div>
 </div>
 
@@ -106,19 +107,19 @@
 
 <div class="mountingRow">
 <div class="mountingLabel">Bone Length</div>
-<input id="bone_length_value" class="numberField" type="number">
+<input id="phase_bone_length_value" class="numberField" type="number">
 <div class="unit">mm</div>
-<label><input id="bone_length_short" type="radio" name="bone_length_direction" value="short"><span>Too Short</span></label>
-<label><input id="bone_length_long" type="radio" name="bone_length_direction" value="long"><span>Too Long</span></label>
+<label><input id="phase_bone_length_short" type="radio" name="phase_bone_length_direction" value="short"><span>Too Short</span></label>
+<label><input id="phase_bone_length_long" type="radio" name="phase_bone_length_direction" value="long"><span>Too Long</span></label>
 <div class="mountingGuide">??</div>
 </div>
 
 <div class="mountingRow">
 <div class="mountingLabel">Bone Rotation</div>
-<input id="bone_rotation_value" class="numberField" type="number">
+<input id="phase_bone_rotation_value" class="numberField" type="number">
 <div class="unit">°</div>
-<label><input id="bone_rotation_internal" type="radio" name="bone_rotation_direction" value="internal"><span>Internal</span></label>
-<label><input id="bone_rotation_external" type="radio" name="bone_rotation_direction" value="external"><span>External</span></label>
+<label><input id="phase_bone_rotation_internal" type="radio" name="phase_bone_rotation_direction" value="internal"><span>Internal</span></label>
+<label><input id="phase_bone_rotation_external" type="radio" name="phase_bone_rotation_direction" value="external"><span>External</span></label>
 <div class="mountingGuide">??</div>
 </div>
 

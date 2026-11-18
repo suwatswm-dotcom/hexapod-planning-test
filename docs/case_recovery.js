@@ -2097,8 +2097,11 @@
         try {
             bindCaseChangeEvents();
             ensureRecoveryVerifyButton();
+            window.ModeSwitchTiming?.mark("Local recovery event bindings and controls ready");
             await refreshExistingFullCaseStatus();
+            window.ModeSwitchTiming?.mark("IndexedDB existing full-case status refreshed");
             const snapshot = safeSnapshot();
+            window.ModeSwitchTiming?.mark("Local CASE snapshot inspected");
             if (snapshot.available && !snapshot.error && isPlausibleLoadedCase()) {
                 state.caseReady = true;
                 state.baselineEstablished = true;

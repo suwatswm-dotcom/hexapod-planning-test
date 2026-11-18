@@ -11,7 +11,7 @@
                maximum-scale=1.0,
                user-scalable=no">
 
-<title>Test 121 — Three.js Clinical Metrics Check</title>
+<title>Test 141 — Three.js Clinical Progress / Movement Limits</title>
 
 <style>
 
@@ -332,11 +332,11 @@ body {
 }
 
 
-/* TEST119 — embedded icon-only display controls. */
+/* TEST134 — embedded icon-only display controls clear the fullscreen control. */
 #embeddedDisplayControls {
     position:absolute;
     right:10px;
-    top:8px;
+    top:52px;
     transform:none;
     z-index:220;
     display:flex;
@@ -387,6 +387,7 @@ body {
 @media (max-width:600px){
     #embeddedDisplayControls {
         right:6px;
+        top:48px;
         gap:4px;
         padding:4px;
     }
@@ -556,7 +557,14 @@ body {
     top:76px;
     z-index:230;
     width:205px;
+    height:auto;
+    min-width:190px;
+    min-height:260px;
+    max-width:90vw;
+    max-height:88vh;
     box-sizing:border-box;
+    resize:both;
+    overflow:auto;
     padding:7px 8px 7px 8px;
     background:rgba(255,255,255,.94);
     border:1px solid rgba(100,100,100,.55);
@@ -582,24 +590,6 @@ body {
     color:#222;
     cursor:move;
     touch-action:none;
-}
-
-#clinicalProgressClose {
-    width:24px;
-    height:24px;
-    padding:0;
-    border:0;
-    border-radius:5px;
-    background:transparent;
-    color:#555;
-    font-size:17px;
-    line-height:22px;
-    cursor:pointer;
-    touch-action:manipulation;
-}
-
-#clinicalProgressClose:hover {
-    background:rgba(0,0,0,.07);
 }
 
 .clinicalMetricCard {
@@ -652,7 +642,8 @@ body {
 
 @media (max-width:600px){
     #clinicalProgressPanel {
-        width:195px;
+        width:205px;
+        min-width:190px;
         left:8px;
         top:62px;
         padding:6px 7px 6px 7px;
@@ -675,6 +666,26 @@ body {
     color:#666;
     pointer-events:none;
 }
+
+/* TEST134: viewer control spacing, clinical panel close cleanup, and movement-limit labels. */
+.clinicalMetricValueRow{display:flex;align-items:baseline;justify-content:space-between;gap:10px;width:100%;min-width:0;}
+.clinicalMetricValueRow .clinicalMetricValue{min-width:0;flex:1 1 auto;}
+.clinicalMetricResidual{flex:0 0 auto;margin-left:auto;text-align:right;white-space:nowrap;font:700 10px/1.15 Arial,sans-serif;color:#222;font-variant-numeric:tabular-nums;}
+/* TEST139: residual color classification. */
+.clinicalMetricResidual.is-within-tolerance{color:#16833B;}
+.clinicalMetricResidual.is-outside-tolerance{color:#C62828;}
+.clinicalMovementCard{padding:5px 1px 4px;border-top:1px solid rgba(120,120,120,.25);margin-top:3px;}
+.clinicalMovementTitle{display:flex;align-items:baseline;justify-content:space-between;gap:5px;font:700 9px/1.2 Arial,sans-serif;color:#444;margin-bottom:2px;}
+.clinicalMovementCurrent{flex:0 0 auto;margin-left:auto;text-align:right;white-space:nowrap;font:700 9px/1.2 Arial,sans-serif;font-variant-numeric:tabular-nums;color:#222;}
+.clinicalMovementCurrent.is-within-limit{color:#16833B;}
+.clinicalMovementCurrent.is-over-limit{color:#C62828;}
+.clinicalMovementChart{display:block;width:100%;height:28px;overflow:visible;}
+.clinicalMovementLine{fill:none;stroke:#4A90E2;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+.clinicalMovementLimit{stroke:#D97706;stroke-width:1.3;stroke-dasharray:4 3;}
+.clinicalMovementDot{fill:#222;stroke:#fff;stroke-width:1.2;}
+#viewerExpandButton{position:absolute;right:12px;top:12px;z-index:240;width:30px;height:30px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid rgba(80,80,80,.55);border-radius:6px;background:rgba(255,255,255,.9);color:#222;font:700 17px/1 Arial,sans-serif;cursor:pointer;}
+#viewer.viewerExpanded{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;z-index:10000!important;margin:0!important;}
+#viewer.viewerExpanded #viewerExpandButton{position:absolute;right:14px;top:14px;}
 </style>
 
 </head>
@@ -711,7 +722,9 @@ body {
             <button type="button" data-display-control="showDiagnosticGeometry" title="Diagnostic geometry" aria-label="Diagnostic geometry">◈</button>
             <button type="button" id="clinicalProgressButton" title="Clinical progress" aria-label="Clinical progress">⌁</button>
         </div>
-<div id="toolbar">
+        <button type="button" id="viewerExpandButton" title="Expand animation viewer" aria-label="Expand animation viewer">⛶</button>
+
+        <div id="toolbar">
 
     <div id="dayRow">
 
@@ -818,9 +831,9 @@ body {
         <div id="clinicalProgressPanel" aria-label="Clinical progress">
             <div id="clinicalProgressTitle">
                 <span>Clinical Progress</span>
-                <button type="button" id="clinicalProgressClose" aria-label="Hide clinical progress">×</button>
             </div>
-            <div id="clinicalProgressCharts"></div>
+<div id="clinicalProgressCharts"></div>
+            <div id="clinicalMovementCharts"></div>
         </div>
 
         <div id="timelineControl" aria-label="Treatment timeline">
@@ -842,7 +855,7 @@ body {
     <div id="developerArea">
         <div id="status">Loading Three.js...</div>
         <div id="diagnosticsPanel" style="display:none;"></div>
-        <div id="testNumberLabel">TEST 129 — CLINICAL TRAJECTORY PANEL</div>
+        <div id="testNumberLabel">TEST 143 — R1172.9.24 EXCEL VERIFICATION + LEGACY SVG RETIREMENT</div>
     </div>
 
 </div>
@@ -858,27 +871,39 @@ body {
 
 
 <script>
-/* TEST 111 — FIXED-CAMERA 2D PAN STARTUP ERROR HANDLER */
+/* R1172.9.11-DIAG — VISIBLE THREE.JS STARTUP ERROR DETAIL */
 (function () {
-  function showStartupError(message) {
+  function showStartupError(message, details) {
     var el = document.getElementById("simviewStatus") ||
              document.getElementById("status");
-    if (el) {
-      el.textContent = "Three.js startup error: " + message;
-      el.style.color = "#b00020";
-      el.style.background = "transparent";
-      el.style.border = "0";
-    }
+    if (!el) return;
+    el.textContent = "Three.js startup error: " + message +
+      (details ? "\n\n" + details : "");
+    el.style.whiteSpace = "pre-wrap";
+    el.style.overflowWrap = "anywhere";
+    el.style.maxHeight = "260px";
+    el.style.overflowY = "auto";
+    el.style.color = "#b00020";
+    el.style.background = "transparent";
+    el.style.border = "0";
   }
   window.addEventListener("error", function (event) {
-    var msg = (event && event.error && event.error.message) ||
+    var error = event && event.error;
+    var msg = (error && error.message) ||
               (event && event.message) || "Unknown JavaScript error";
-    showStartupError(msg);
+    var details = [
+      "File: " + ((event && event.filename) || "unknown"),
+      "Line: " + ((event && event.lineno) || "unknown"),
+      "Column: " + ((event && event.colno) || "unknown"),
+      error && error.stack ? "Stack:\n" + error.stack : "Stack: unavailable"
+    ].join("\n");
+    showStartupError(msg, details);
   });
   window.addEventListener("unhandledrejection", function (event) {
     var reason = event && event.reason;
     var msg = (reason && reason.message) || String(reason || "Unknown promise error");
-    showStartupError(msg);
+    var details = reason && reason.stack ? "Stack:\n" + reason.stack : "Stack: unavailable";
+    showStartupError(msg, details);
   });
 })();
 </script>
@@ -929,6 +954,57 @@ const status =
     document.getElementById(
         "status"
     );
+
+const viewerExpandButton = document.getElementById("viewerExpandButton");
+
+function updateViewerFullscreenControl(){
+    if(!viewerExpandButton) return;
+    const expanded = !!document.fullscreenElement;
+    viewerExpandButton.textContent = expanded ? "×" : "⛶";
+    viewerExpandButton.title = expanded ? "Exit full-page viewer" : "Expand viewer to full browser page";
+    viewerExpandButton.setAttribute("aria-label", viewerExpandButton.title);
+}
+
+if(viewerExpandButton){
+    const fullscreenSupported = !!(
+        document.documentElement.requestFullscreen ||
+        document.documentElement.webkitRequestFullscreen
+    );
+    if(!fullscreenSupported){
+        viewerExpandButton.style.display = "none";
+    }else{
+        viewerExpandButton.addEventListener("click", async function(){
+            try{
+                if(document.fullscreenElement || document.webkitFullscreenElement){
+                    if(document.exitFullscreen){
+                        await document.exitFullscreen();
+                    }else if(document.webkitExitFullscreen){
+                        document.webkitExitFullscreen();
+                    }
+                }else if(document.documentElement.requestFullscreen){
+                    await document.documentElement.requestFullscreen();
+                }else if(document.documentElement.webkitRequestFullscreen){
+                    document.documentElement.webkitRequestFullscreen();
+                }
+                requestAnimationFrame(resizeRenderer);
+            }catch(error){
+                const message = "Full-page viewer unavailable. The parent page may not permit iframe fullscreen: " +
+                    (error && error.message ? error.message : String(error));
+                if(status) status.textContent = message;
+            }
+        });
+        document.addEventListener("fullscreenchange", function(){
+            updateViewerFullscreenControl();
+            requestAnimationFrame(resizeRenderer);
+        });
+        document.addEventListener("webkitfullscreenchange", function(){
+            updateViewerFullscreenControl();
+            requestAnimationFrame(resizeRenderer);
+        });
+        updateViewerFullscreenControl();
+    }
+}
+
 
 const daySlider =
     document.getElementById(
@@ -4549,6 +4625,10 @@ function loadCurrentSimulationFrame(preserveDay = Number(daySlider.value)){
     frames = latestContract.days;
     totalDays = frames.length - 1;
 
+    // Rebuild all six trajectories from the newly published daily frames.
+    // showDay() refreshes values and the selected-day markers afterward.
+    clinicalProgressChartsBuilt = false;
+
     const requestedDay = Number.isFinite(Number(preserveDay))
         ? Number(preserveDay)
         : 0;
@@ -4821,7 +4901,7 @@ test50Marker(test50P2Axis,0xffff00,4.5);
 
 
 // ============================================================
-// TEST129 — CLINICAL PROGRESS TRAJECTORY PANEL
+// TEST143 — R1172.9.24 EXCEL VERIFICATION + LEGACY SVG RETIREMENT
 //
 // Surgeon-facing presentation:
 //   • one compact sparkline per clinical metric
@@ -4842,11 +4922,10 @@ const clinicalProgressTitle =
 const clinicalProgressCharts =
     document.getElementById("clinicalProgressCharts");
 
+const clinicalMovementCharts = document.getElementById("clinicalMovementCharts");
+
 const clinicalProgressButton =
     document.getElementById("clinicalProgressButton");
-
-const clinicalProgressClose =
-    document.getElementById("clinicalProgressClose");
 
 
 const CLINICAL_PHASE_COLORS = [
@@ -4893,19 +4972,25 @@ function clinicalProgressFormatValue(frame, metric){
         return "—";
     }
 
-    const magnitude = Math.abs(value);
-    let digits = magnitude >= 10 ? 0 : 2;
-    let result = magnitude.toFixed(digits) + metric.suffix;
+    // R1172.9.24: show magnitude only; clinical direction remains a
+    // separate label below. The signed source metric is not modified.
+    const result = Math.abs(value).toFixed(2) + metric.suffix;
 
     const direction = directions
         ? String(directions[metric.key] || "").trim()
         : "";
 
-    if(direction){
-        result += " " + direction;
-    }
+    return result + (direction ? " " + direction : "");
+}
 
-    return result;
+function clinicalProgressFormatResidual(frame, metric){
+    const targets = frame && frame.clinicalTargets && typeof frame.clinicalTargets === "object" ? frame.clinicalTargets : null;
+    const metrics = frame && frame.clinicalMetrics && typeof frame.clinicalMetrics === "object" ? frame.clinicalMetrics : null;
+    if(!targets || !metrics || !Number.isFinite(Number(targets[metric.key]))) return "N/A";
+    const current = Number(metrics[metric.key]);
+    if(!Number.isFinite(current)) return "—";
+    const residual = Number(targets[metric.key]) - current;
+    return (residual > 0 ? "+" : "") + residual.toFixed(2) + (metric.suffix ? " " + metric.suffix.trim() : "");
 }
 
 function clinicalProgressBuildTrajectory(metric){
@@ -5068,6 +5153,121 @@ function clinicalProgressBuildTrajectory(metric){
     };
 }
 
+const CLINICAL_METRIC_TOLERANCE = {
+    ap_translation: 1.0,
+    lat_translation: 1.0,
+    bone_length: 1.0,
+    ap_angulation: 0.5,
+    lat_angulation: 0.5,
+    bone_rotation: 0.5
+};
+
+function clinicalProgressApplyTolerance(frame, metric, valueEl, residualEl){
+    if(valueEl){
+        valueEl.classList.remove("is-within-tolerance", "is-outside-tolerance");
+        valueEl.style.color = "#111";
+    }
+    if(residualEl){
+        residualEl.classList.remove("is-within-tolerance", "is-outside-tolerance");
+        residualEl.style.color = "#222";
+    }
+    const targets = frame && frame.clinicalTargets;
+    const metrics = frame && frame.clinicalMetrics;
+    if(!targets || !metrics || !Number.isFinite(Number(targets[metric.key]))) return;
+    const current = Number(metrics[metric.key]);
+    const target = Number(targets[metric.key]);
+    if(!Number.isFinite(current) || !Number.isFinite(target)) return;
+    const tolerance = CLINICAL_METRIC_TOLERANCE[metric.key];
+    const within = Math.abs(target - current) <= tolerance + 1e-9;
+    const cls = within ? "is-within-tolerance" : "is-outside-tolerance";
+    if(residualEl){
+        residualEl.classList.add(cls);
+        // Existing R1172.9.19 color behavior is observed, not modified by this diagnostic build.
+        // Inline color avoids inherited/competing styles in embedded layouts.
+        residualEl.style.color = within ? "#16833B" : "#C62828";
+    }
+}
+
+function clinicalProgressBuildMovementTrajectory(kind){
+    if(!Array.isArray(frames) || !frames.length) return null;
+    const keys = kind === "mm"
+        ? ["ap_translation", "lat_translation", "bone_length"]
+        : ["ap_angulation", "lat_angulation", "bone_rotation"];
+    const limit = 1.0;
+    const values = frames.map(function(frame, index){
+        if(index === 0) return 0;
+        const previous = frames[index - 1];
+        const currentMetrics = frame && frame.clinicalMetrics;
+        const previousMetrics = previous && previous.clinicalMetrics;
+        if(!currentMetrics || !previousMetrics) return null;
+        const deltas = keys.map(function(key){
+            const a = Number(currentMetrics[key]);
+            const b = Number(previousMetrics[key]);
+            return Number.isFinite(a) && Number.isFinite(b) ? Math.abs(a - b) : null;
+        }).filter(function(v){ return v !== null; });
+        return deltas.length ? Math.max.apply(null, deltas) : null;
+    });
+    const valid = values.filter(function(v){ return v !== null; });
+    if(!valid.length) return null;
+    const maxValue = Math.max(limit, ...valid) * 1.12;
+    const W = 248, H = 34, padX = 2, padY = 3;
+    const xFor = function(i){ return values.length <= 1 ? W/2 : padX + i/(values.length-1)*(W-2*padX); };
+    const yFor = function(v){ return H-padY-(v/maxValue)*(H-2*padY); };
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS,"svg");
+    svg.setAttribute("class","clinicalMovementChart");
+    svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+    svg.setAttribute("preserveAspectRatio","none");
+    const limitLine = document.createElementNS(svgNS,"line");
+    limitLine.setAttribute("class","clinicalMovementLimit");
+    limitLine.setAttribute("x1",padX); limitLine.setAttribute("x2",W-padX);
+    limitLine.setAttribute("y1",yFor(limit)); limitLine.setAttribute("y2",yFor(limit));
+    svg.appendChild(limitLine);
+    const pts=[];
+    values.forEach(function(v,i){ if(v!==null) pts.push(`${xFor(i).toFixed(2)},${yFor(v).toFixed(2)}`); });
+    if(pts.length>1){
+        const path=document.createElementNS(svgNS,"polyline");
+        path.setAttribute("class","clinicalMovementLine");
+        path.setAttribute("points",pts.join(" "));
+        svg.appendChild(path);
+    }
+    const dot=document.createElementNS(svgNS,"circle");
+    dot.setAttribute("class","clinicalMovementDot"); dot.setAttribute("r","3");
+    dot.setAttribute("cx",xFor(0)); dot.setAttribute("cy",yFor(values[0] || 0));
+    svg.appendChild(dot);
+    return {svg,dot,values,xFor,yFor,limit};
+}
+
+function clinicalProgressBuildMovementPanels(){
+    if(!clinicalMovementCharts) return;
+    clinicalMovementCharts.innerHTML="";
+    [
+        {kind:"mm",title:"Translation movement"},
+        {kind:"deg",title:"Rotation movement"}
+    ].forEach(function(item){
+        const card=document.createElement("div");
+        card.className="clinicalMovementCard";
+        const title=document.createElement("div");
+        title.className="clinicalMovementTitle";
+        const label=document.createElement("span");
+        label.textContent=item.kind==="mm"?"Translation Limit 1.00 mm":"Rotation Limit 1.00°";
+        const current=document.createElement("span");
+        current.className="clinicalMovementCurrent";
+        current.textContent="—";
+        title.appendChild(label);
+        title.appendChild(current);
+        card.appendChild(title);
+        const trajectory=clinicalProgressBuildMovementTrajectory(item.kind);
+        if(trajectory){
+            card.appendChild(trajectory.svg);
+            card._clinicalMovement=trajectory;
+            card._clinicalMovementCurrent=current;
+            card._clinicalMovementUnit=item.kind==="mm"?"mm":"°";
+        }
+        clinicalMovementCharts.appendChild(card);
+    });
+}
+
 function clinicalProgressBuildPanel(){
     if(!clinicalProgressCharts) return;
 
@@ -5083,12 +5283,22 @@ function clinicalProgressBuildPanel(){
         label.className = "clinicalMetricLabel";
         label.textContent = metric.label;
 
+        const valueRow = document.createElement("div");
+        valueRow.className = "clinicalMetricValueRow";
+
         const value = document.createElement("div");
         value.className = "clinicalMetricValue";
         value.id = "clinicalValue_" + metric.key;
 
+        const residual = document.createElement("div");
+        residual.className = "clinicalMetricResidual";
+        residual.id = "clinicalResidual_" + metric.key;
+        residual.textContent = "N/A";
+
+        valueRow.appendChild(value);
+        valueRow.appendChild(residual);
         card.appendChild(label);
-        card.appendChild(value);
+        card.appendChild(valueRow);
 
         const trajectory = clinicalProgressBuildTrajectory(metric);
         if(trajectory){
@@ -5099,6 +5309,7 @@ function clinicalProgressBuildPanel(){
         clinicalProgressCharts.appendChild(card);
     });
 
+    clinicalProgressBuildMovementPanels();
     clinicalProgressChartsBuilt = true;
 }
 
@@ -5129,9 +5340,14 @@ function updateClinicalProgressPanel(frame, day){
             card.querySelector(".clinicalMetricValue");
 
         if(valueEl){
-            valueEl.textContent =
-                clinicalProgressFormatValue(frame, metric);
+            valueEl.textContent = clinicalProgressFormatValue(frame, metric);
         }
+
+        const residualEl = card.querySelector(".clinicalMetricResidual");
+        if(residualEl){
+            residualEl.textContent = clinicalProgressFormatResidual(frame, metric);
+        }
+        clinicalProgressApplyTolerance(frame, metric, valueEl, residualEl);
 
         const trajectory = card._clinicalTrajectory;
         if(!trajectory) return;
@@ -5153,6 +5369,31 @@ function updateClinicalProgressPanel(frame, day){
             trajectory.yFor(value)
         );
     });
+
+    if(clinicalMovementCharts){
+        Array.from(clinicalMovementCharts.children).forEach(function(card){
+            const trajectory=card._clinicalMovement;
+            if(!trajectory) return;
+            const value=trajectory.values[safeDay];
+            if(value===null || !Number.isFinite(value)){
+                trajectory.dot.style.display="none";
+                if(card._clinicalMovementCurrent){
+                    card._clinicalMovementCurrent.textContent="—";
+                    card._clinicalMovementCurrent.classList.remove("is-within-limit", "is-over-limit");
+                }
+                return;
+            }
+            trajectory.dot.style.display="block";
+            trajectory.dot.setAttribute("cx",trajectory.xFor(safeDay));
+            trajectory.dot.setAttribute("cy",trajectory.yFor(value));
+            if(card._clinicalMovementCurrent){
+                const overLimit = value > trajectory.limit + 1e-9;
+                card._clinicalMovementCurrent.textContent=value.toFixed(2)+" "+(card._clinicalMovementUnit || "");
+                card._clinicalMovementCurrent.classList.toggle("is-over-limit", overLimit);
+                card._clinicalMovementCurrent.classList.toggle("is-within-limit", !overLimit);
+            }
+        });
+    }
 }
 
 function setClinicalProgressVisible(visible){
@@ -5195,19 +5436,7 @@ clinicalProgressButton.addEventListener("click", function(event){
     setClinicalProgressVisible(!visible);
 });
 
-clinicalProgressClose.addEventListener("pointerdown", function(event){
-    event.stopPropagation();
-});
-
-clinicalProgressClose.addEventListener("click", function(event){
-    event.preventDefault();
-    event.stopPropagation();
-    setClinicalProgressVisible(false);
-});
-
 clinicalProgressTitle.addEventListener("pointerdown", function(event){
-    if(event.target === clinicalProgressClose) return;
-
     event.preventDefault();
     event.stopPropagation();
 

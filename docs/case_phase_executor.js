@@ -164,6 +164,13 @@
       fail('R1166 HexapodPlannerTrajectory is unavailable.');
     if(!root.HexapodPlannerCandidates||typeof root.HexapodPlannerCandidates.simpleSearch!=='function')
       fail('R1163 HexapodPlannerCandidates is unavailable.');
+    if(root.HexapodPlannerTrajectory?.PLANNER_CONFIG?.MODE==='STRICT_JS'&&
+       typeof root.HexapodPlannerCandidates.strictSearch!=='function')
+      fail('R1172.9.3 STRICT_JS requires the 64-combination primary candidate search.');
+    if(root.HexapodPlannerTrajectory?.PLANNER_CONFIG?.MODE==='STRICT_JS'&&
+       root.HexapodPlannerTrajectory?.PLANNER_CONFIG?.EXPANDED_SEARCH_ENABLED!==false&&
+       typeof root.HexapodPlannerCandidates.expandedSearch!=='function')
+      fail('R1172.9.3 STRICT_JS expanded-neighborhood fallback is unavailable.');
     if(!root.HexapodTreatmentOrchestration||typeof root.HexapodTreatmentOrchestration.runTreatmentPlanner!=='function')
       fail('R1167 HexapodTreatmentOrchestration is unavailable.');
   }
@@ -231,7 +238,7 @@
       start_state_source:context.activeReplan?'active-replan':(context.startState?.source||'clinical-default'),
       start_state_overlap:context.startState?.overlap===true,
       start_state_overlap_row_index:context.startState?.overlapRowIndex??null,
-      start_pose:clone(startPose),
+      start_pose:clone(startPose),target_pose:clone(targetPose),
       strut_array:struts,daily_poses:poses,daily_ring_poses:result.daily_ring_poses,
       days_needed:result.days_needed,recovered_final_pose:clone(poses[poses.length-1]),
       clinical_metrics:poses.map(clinicalMetricsFromPose),
@@ -240,6 +247,12 @@
       schedule_generated:result.schedule_generated===true,
       clinical_target_reached:result.clinical_target_reached===true,
       planner_mode:result.planner_mode,
+      candidate_search_strategy:result.candidate_search_strategy,
+      candidate_selection_strategy:result.candidate_selection_strategy,
+      initially_complete_dimensions:result.initially_complete_dimensions,
+      completed_dimensions:result.completed_dimensions,
+      planner_configuration:result.planner_configuration,
+      performance:result.performance,
       termination_reason:result.termination_reason,termination_message:result.termination_message,
       completion:result.completion,day_reports:result.day_reports,
       estimated_days:result.estimated_days,

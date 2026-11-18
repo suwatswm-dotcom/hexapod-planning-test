@@ -44,22 +44,52 @@ const TARGET_FIELDS = [
 const PRESERVE_CALENDAR_GAP = false;
 
 
-window.treatmentSimulationReady = false;
 
 // ============================================================
-// COMMITTED STAGE SNAPSHOTS
+// R1172.9.23 — COMMITTED STAGE SNAPSHOTS — MODE ISOLATED
 //
-// Browser-runtime transaction state.
+// Normal Planning and Prescription Verification can both
+// operate on the same CASE phase IDs, but their prescriptions
+// are different schedule products. Their rollback baselines
+// must therefore never share a phase-ID-only snapshot slot.
 //
-// One snapshot is maintained for each phase.
-// The snapshot represents the last committed state of that
-// phase and is used for rollback when a replan is cancelled.
-//
-// This is intentionally NOT stored inside CASE.
+// Runtime only; intentionally NOT stored inside CASE.
 // ============================================================
 
-window.savedStageSnapshots =
-    window.savedStageSnapshots || {};
+window.savedStageSnapshotsByMode =
+    window.savedStageSnapshotsByMode || {
+        normal: {},
+        verification: {}
+    };
+
+function getCommittedStageSnapshotStore(mode, caseRef = null){
+    const activeCase = caseRef || window.currentCase || window.CASE || window.caseData || null;
+    const modeKey = normalizePlannerMode(
+        mode !== undefined && mode !== null
+            ? mode
+            : (activeCase && activeCase.metadata && activeCase.metadata.planner)
+    );
+
+    if(!window.savedStageSnapshotsByMode || typeof window.savedStageSnapshotsByMode !== "object"){
+        window.savedStageSnapshotsByMode = { normal: {}, verification: {} };
+    }
+
+    // Snapshot IDs are CASE-local. If a different CASE object is installed,
+    // discard the previous CASE's runtime snapshots before using its phase IDs.
+    if(activeCase && window.savedStageSnapshotsOwnerCase !== activeCase){
+        window.savedStageSnapshotsByMode = { normal: {}, verification: {} };
+        window.savedStageSnapshotsOwnerCase = activeCase;
+    }
+
+    if(!window.savedStageSnapshotsByMode.normal || typeof window.savedStageSnapshotsByMode.normal !== "object"){
+        window.savedStageSnapshotsByMode.normal = {};
+    }
+    if(!window.savedStageSnapshotsByMode.verification || typeof window.savedStageSnapshotsByMode.verification !== "object"){
+        window.savedStageSnapshotsByMode.verification = {};
+    }
+
+    return window.savedStageSnapshotsByMode[modeKey];
+}
 
 // ============================================================
 // ONE-LEVEL UNDO
@@ -74,66 +104,76 @@ window.savedStageSnapshots =
 window.lastUndoTransaction =
     window.lastUndoTransaction || null;
 
+// R1172.9.18: keep one-level Undo isolated by planner mode.
+window.lastUndoTransactionsByMode =
+    window.lastUndoTransactionsByMode || { normal: null, verification: null };
+
+function normalizePlannerMode(mode){
+    return mode === "verification" ? "verification" : "normal";
+}
+
+function activateUndoTransactionForMode(mode){
+    const key = normalizePlannerMode(mode);
+    window.lastUndoTransaction =
+        window.lastUndoTransactionsByMode[key] || null;
+    updateUndoButton();
+}
+
+function saveUndoTransactionForCurrentMode(transaction, mode = null){
+    const c = window.currentCase || window.CASE || window.caseData;
+    const key = normalizePlannerMode(
+        mode !== null && mode !== undefined
+            ? mode
+            : (transaction && transaction.plannerMode) || (c && c.metadata && c.metadata.planner)
+    );
+    if(!window.lastUndoTransactionsByMode){
+        window.lastUndoTransactionsByMode = { normal: null, verification: null };
+    }
+    transaction = transaction || null;
+    if(transaction) transaction.plannerMode = key;
+    window.lastUndoTransactionsByMode[key] = transaction;
+    window.lastUndoTransaction = transaction;
+    updateUndoButton();
+}
+
 function saveCommittedStageSnapshot(
-    stage
+    stage,
+    mode = null
 ){
 
-    if(
-        !stage ||
-        !stage.id
-    ){
-
+    if(!stage || !stage.id){
         return;
-
     }
 
-
-    window.savedStageSnapshots[
-        stage.id
-    ] =
-        structuredClone(
-            stage
-        );
-
+    const snapshotStore = getCommittedStageSnapshotStore(mode);
+    snapshotStore[stage.id] = structuredClone(stage);
 }
 
 
 function getCommittedStageSnapshot(
-    stage
+    stage,
+    mode = null
 ){
 
-    if(
-        !stage ||
-        !stage.id
-    ){
-
+    if(!stage || !stage.id){
         return null;
-
     }
 
-
-    const snapshot =
-        window.savedStageSnapshots[
-            stage.id
-        ];
-
+    const snapshotStore = getCommittedStageSnapshotStore(mode);
+    const snapshot = snapshotStore[stage.id];
 
     if(!snapshot){
-
         return null;
-
     }
 
-
-    return structuredClone(
-        snapshot
-    );
+    return structuredClone(snapshot);
 
 }
 
 
 function restoreCommittedStageSnapshot(
-    stage
+    stage,
+    mode = null
 ){
 
     if(
@@ -148,7 +188,8 @@ function restoreCommittedStageSnapshot(
 
     const snapshot =
         getCommittedStageSnapshot(
-            stage
+            stage,
+            mode
         );
 
 
@@ -196,6 +237,11 @@ function initializeCommittedStageSnapshots(
     }
 
 
+    const snapshotMode = normalizePlannerMode(
+        c.metadata && c.metadata.planner
+    );
+    const snapshotStore = getCommittedStageSnapshotStore(snapshotMode, c);
+
     c.treatment.stages.forEach(
         stage => {
 
@@ -217,13 +263,14 @@ function initializeCommittedStageSnapshots(
 
             if(
                 stage.prescription &&
-                !window.savedStageSnapshots[
+                !snapshotStore[
                     stage.id
                 ]
             ){
 
                 saveCommittedStageSnapshot(
-                    stage
+                    stage,
+                    snapshotMode
                 );
 
             }
@@ -350,10 +397,18 @@ function captureUndoTransaction(
     }
 
 
+
     return {
 
         transactionId:
             cascadeContext.transactionId,
+
+        plannerMode:
+            normalizePlannerMode(
+                cascadeContext.plannerMode ||
+                (window.currentCase && window.currentCase.metadata && window.currentCase.metadata.planner) ||
+                "normal"
+            ),
 
         rootStageId:
             cascadeContext.rootStageId,
@@ -417,6 +472,20 @@ async function undoLastPlanningTransaction(){
 
         return false;
 
+    }
+
+    // R1172.9.19 safety guard: never apply a transaction captured
+    // under a different planner mode. Re-activate the current mode's
+    // own Undo slot instead of allowing cross-mode rollback.
+    const activeCaseForUndo = window.currentCase || window.CASE || window.caseData;
+    const activeUndoMode = normalizePlannerMode(
+        activeCaseForUndo && activeCaseForUndo.metadata && activeCaseForUndo.metadata.planner
+    );
+    const transactionUndoMode = normalizePlannerMode(undoTransaction.plannerMode);
+    if(transactionUndoMode !== activeUndoMode){
+        activateUndoTransactionForMode(activeUndoMode);
+        alert("Undo was blocked because this transaction belongs to a different planning mode. The correct mode-specific Undo state has been restored.");
+        return false;
     }
 
 
@@ -486,7 +555,8 @@ async function undoLastPlanningTransaction(){
             if(restoredStage){
 
                 saveCommittedStageSnapshot(
-                    restoredStage
+                    restoredStage,
+                    undoTransaction.plannerMode
                 );
 
             }
@@ -520,7 +590,7 @@ async function undoLastPlanningTransaction(){
     // IMPORTANT:
     //
     // Undo has restored the previous committed state into CASE.
-    // Synchronize savedStageSnapshots with that restored state.
+    // Synchronize the active mode's committed snapshot store with that restored state.
     //
     // This is essential for the NEXT planning transaction.
     // --------------------------------------------------------
@@ -540,7 +610,8 @@ async function undoLastPlanningTransaction(){
         if(restoredStage){
 
             saveCommittedStageSnapshot(
-                restoredStage
+                restoredStage,
+                undoTransaction.plannerMode
             );
 
         }
@@ -592,9 +663,12 @@ async function undoLastPlanningTransaction(){
     // Once used, the Undo transaction is consumed.
     // --------------------------------------------------------
 
-    window.lastUndoTransaction =
-        null;
-
+    const undoMode = normalizePlannerMode(undoTransaction.plannerMode);
+    if(!window.lastUndoTransactionsByMode){
+        window.lastUndoTransactionsByMode = { normal: null, verification: null };
+    }
+    window.lastUndoTransactionsByMode[undoMode] = null;
+    window.lastUndoTransaction = null;
 
     updateUndoButton();
 
@@ -913,12 +987,8 @@ function buildBrowserCaseMechanicalParameters(caseData){
 
     const plannerMode = (c.metadata && c.metadata.planner) || "normal";
     if(plannerMode === "verification"){
-        const verification = window.HexapodPrescriptionVerification;
-        if(!verification || typeof verification.fixedStrutRows !== "function"){
-            throw new Error("Browser fixed-prescription verification rows are unavailable.");
-        }
         params.PRESCRIPTION_VERIFICATION = true;
-        params.VERIFICATION_STRUT_ARRAY = verification.fixedStrutRows();
+        params.VERIFICATION_STRUT_ARRAY = getPrescriptionVerificationRows(c);
     } else {
         const merged = [];
         stages.forEach((stage, index) => {
@@ -1028,11 +1098,8 @@ function syncCurrentCase(){
 // ============================================================
 
 function currentWorkspace(){
-    if (window.WorkspaceManager && window.WorkspaceManager.currentWorkspace) {
-        return window.WorkspaceManager.currentWorkspace;
-    }
-    const path = window.location.pathname.replace(/\/+$/, "");
-    return path.split("/").pop() || "patient";
+    const path = window.location.pathname;
+    return path.replace("/", "");
 }
 
 
@@ -1054,20 +1121,17 @@ function previousWorkspace(){
 
 function goNextWorkspace(){
     const next = nextWorkspace();
-    if (!next) return;
-    if (window.WorkspaceManager?.show) {
-        return window.WorkspaceManager.show(next);
+    if(next){
+        window.location.href = "/" + next;
     }
-    window.location.href = window.appAssetUrl ? window.appAssetUrl(next) : "./" + next;
 }
+
 
 function goPreviousWorkspace(){
     const previous = previousWorkspace();
-    if (!previous) return;
-    if (window.WorkspaceManager?.show) {
-        return window.WorkspaceManager.show(previous);
+    if(previous){
+        window.location.href = "/" + previous;
     }
-    window.location.href = window.appAssetUrl ? window.appAssetUrl(previous) : "./" + previous;
 }
 
 function initializeWorkflowButtons(){
@@ -1080,18 +1144,27 @@ function initializeWorkflowButtons(){
 //  triggered when current_case is updated..
 //jul 9, 2026 currently only patient_workspace has load case
 // so it is used in the page only.. the fuction might be needed on other pages in future
-function refreshCurrentWorkflow(){
-    const active = window.WorkspaceManager?.currentWorkspace || currentWorkspace();
-    const refreshers = {
-        patient: "refreshPatientWorkflow",
-        deformity: "refreshDeformityWorkflow",
-        mounting: "refreshMountingWorkflow",
-        frame: "refreshFrameWorkflow",
-        phases: "refreshPhasesWorkflow",
-        treatment: "refreshTreatmentWorkflow"
-    };
-    const fn = refreshers[active];
-    if (fn && typeof window[fn] === "function") return window[fn]();
+function refreshCurrentWorkflow(){ 
+    const path = window.location.pathname;
+
+    if(path == "/patient"){
+        if(typeof refreshPatientWorkflow === "function"){refreshPatientWorkflow();}}
+
+    else if(path == "/deformity"){
+        if(typeof refreshDeformityWorkflow === "function"){refreshDeformityWorkflow();}}
+
+    else if(path == "/mounting"){
+        if(typeof refreshMountingWorkflow === "function"){refreshMountingWorkflow();}}
+
+    else if(path == "/frame"){
+        if(typeof refreshFrameWorkflow === "function"){refreshFrameWorkflow();}}
+
+    else if(path == "/phases"){
+        if(typeof refreshPhasesWorkflow === "function"){refreshPhaseWorkflow();}}
+
+    else if(path == "/treatment"){
+        if(typeof refreshTreatmentWorkflow === "function"){refreshTreatmentWorkflow();}}
+
 }
 
 // ============================================================
@@ -1193,7 +1266,7 @@ function populateTargetSummary(
             
                 <div>
             
-                    ${target.ap_translation.value}
+                    ${Math.abs(Number(target.ap_translation.value) || 0)}
                     mm
                     ${capitalize(target.ap_translation.direction)}
             
@@ -1201,7 +1274,7 @@ function populateTargetSummary(
             
                 <div>
             
-                    ${target.ap_angulation.value}°
+                    ${Math.abs(Number(target.ap_angulation.value) || 0)}°
                     ${capitalize(target.ap_angulation.direction)}
             
                 </div>
@@ -1212,7 +1285,7 @@ function populateTargetSummary(
             
                 <div>
             
-                    ${target.lat_translation.value}
+                    ${Math.abs(Number(target.lat_translation.value) || 0)}
                     mm
                     ${capitalize(target.lat_translation.direction)}
             
@@ -1220,7 +1293,7 @@ function populateTargetSummary(
             
                 <div>
             
-                    ${target.lat_angulation.value}°
+                    ${Math.abs(Number(target.lat_angulation.value) || 0)}°
                     ${capitalize(target.lat_angulation.direction)}
             
                 </div>
@@ -1231,7 +1304,7 @@ function populateTargetSummary(
             
                 <div>
             
-                    ${target.bone_length.value}
+                    ${Math.abs(Number(target.bone_length.value) || 0)}
                     mm
                     ${capitalize(target.bone_length.direction)}
             
@@ -1239,132 +1312,8 @@ function populateTargetSummary(
             
                 <div>
             
-                    ${target.bone_rotation.value}°
+                    ${Math.abs(Number(target.bone_rotation.value) || 0)}°
                     ${capitalize(target.bone_rotation.direction)}
-            
-                </div>
-            
-            </div>
-
-        </div>
-
-    `;
-
-}
-
-function populateResidualSummary(
-
-    containerId,
-
-    current,
-
-    desired
-
-){
-
-    const container =
-
-        document.getElementById(
-
-            containerId
-
-        );
-
-    if(!container){
-
-        return;
-
-    }
-
-    function diff(a,b){
-
-        return (
-
-            b - a
-
-        ).toFixed(1);
-
-    }
-
-    container.innerHTML = `
-
-        <div class="summaryCard">
-
-            <div class="summaryHeader">
-
-                <div><b>Translation</b></div>
-
-                <div><b>Rotation</b></div>
-
-            </div>
-
-            <div class="summaryRow">
-            
-                <div>
-            
-                    AP:
-                    ${diff(
-                        current.ap_translation.value,
-                        desired.ap_translation.value
-                    )} mm
-            
-                </div>
-            
-                <div>
-            
-                    AP:
-                    ${diff(
-                        current.ap_angulation.value,
-                        desired.ap_angulation.value
-                    )}°
-            
-                </div>
-            
-            </div>
-            
-            <div class="summaryRow">
-            
-                <div>
-            
-                    LAT:
-                    ${diff(
-                        current.lat_translation.value,
-                        desired.lat_translation.value
-                    )} mm
-            
-                </div>
-            
-                <div>
-            
-                    LAT:
-                    ${diff(
-                        current.lat_angulation.value,
-                        desired.lat_angulation.value
-                    )}°
-            
-                </div>
-            
-            </div>
-            
-            <div class="summaryRow">
-            
-                <div>
-            
-                    Length:
-                    ${diff(
-                        current.bone_length.value,
-                        desired.bone_length.value
-                    )} mm
-            
-                </div>
-            
-                <div>
-            
-                    Rot:
-                    ${diff(
-                        current.bone_rotation.value,
-                        desired.bone_rotation.value
-                    )}°
             
                 </div>
             
@@ -2008,68 +1957,68 @@ function populatePhaseEditor(){
 
 
     document.getElementById(
-        "ap_translation_value"
+        "phase_ap_translation_value"
     ).value =
         stage.target.ap_translation.value;
     
     document.getElementById(
-        "ap_angulation_value"
+        "phase_ap_angulation_value"
     ).value =
         stage.target.ap_angulation.value;
     
     document.getElementById(
-        "lat_translation_value"
+        "phase_lat_translation_value"
     ).value =
         stage.target.lat_translation.value;
     
     document.getElementById(
-        "lat_angulation_value"
+        "phase_lat_angulation_value"
     ).value =
         stage.target.lat_angulation.value;
     
     document.getElementById(
-        "bone_length_value"
+        "phase_bone_length_value"
     ).value =
         stage.target.bone_length.value;
     
     document.getElementById(
-        "bone_rotation_value"
+        "phase_bone_rotation_value"
     ).value =
         stage.target.bone_rotation.value;
         
     document.querySelector(
     
-        `input[name="ap_translation_direction"][value="${stage.target.ap_translation.direction}"]`
+        `input[name="phase_ap_translation_direction"][value="${stage.target.ap_translation.direction}"]`
     
     ).checked = true;
     
     document.querySelector(
     
-        `input[name="ap_angulation_direction"][value="${stage.target.ap_angulation.direction}"]`
+        `input[name="phase_ap_angulation_direction"][value="${stage.target.ap_angulation.direction}"]`
     
     ).checked = true;
     
     document.querySelector(
     
-        `input[name="lat_translation_direction"][value="${stage.target.lat_translation.direction}"]`
+        `input[name="phase_lat_translation_direction"][value="${stage.target.lat_translation.direction}"]`
     
     ).checked = true;
     
     document.querySelector(
     
-        `input[name="lat_angulation_direction"][value="${stage.target.lat_angulation.direction}"]`
+        `input[name="phase_lat_angulation_direction"][value="${stage.target.lat_angulation.direction}"]`
     
     ).checked = true;
     
     document.querySelector(
     
-        `input[name="bone_length_direction"][value="${stage.target.bone_length.direction}"]`
+        `input[name="phase_bone_length_direction"][value="${stage.target.bone_length.direction}"]`
     
     ).checked = true;
     
     document.querySelector(
     
-        `input[name="bone_rotation_direction"][value="${stage.target.bone_rotation.direction}"]`
+        `input[name="phase_bone_rotation_direction"][value="${stage.target.bone_rotation.direction}"]`
     
     ).checked = true;        
         
@@ -2134,7 +2083,7 @@ function initializePhaseEditor(){
 
     bindNumericField(
     
-        "ap_translation_value",
+        "phase_ap_translation_value",
     
         stage => stage.target.ap_translation.value,
     
@@ -2147,7 +2096,7 @@ function initializePhaseEditor(){
     
     bindNumericField(
     
-        "ap_angulation_value",
+        "phase_ap_angulation_value",
     
         stage => stage.target.ap_angulation.value,
     
@@ -2160,7 +2109,7 @@ function initializePhaseEditor(){
     
     bindNumericField(
     
-        "lat_translation_value",
+        "phase_lat_translation_value",
     
         stage => stage.target.lat_translation.value,
     
@@ -2173,7 +2122,7 @@ function initializePhaseEditor(){
     
     bindNumericField(
     
-        "lat_angulation_value",
+        "phase_lat_angulation_value",
     
         stage => stage.target.lat_angulation.value,
     
@@ -2186,7 +2135,7 @@ function initializePhaseEditor(){
     
     bindNumericField(
     
-        "bone_length_value",
+        "phase_bone_length_value",
     
         stage => stage.target.bone_length.value,
     
@@ -2199,7 +2148,7 @@ function initializePhaseEditor(){
     
     bindNumericField(
     
-        "bone_rotation_value",
+        "phase_bone_rotation_value",
     
         stage => stage.target.bone_rotation.value,
     
@@ -2212,7 +2161,7 @@ function initializePhaseEditor(){
 
     bindDirectionField(
     
-        "ap_translation_direction",
+        "phase_ap_translation_direction",
     
         stage => stage.target.ap_translation.direction,
     
@@ -2225,7 +2174,7 @@ function initializePhaseEditor(){
     
     bindDirectionField(
     
-        "ap_angulation_direction",
+        "phase_ap_angulation_direction",
     
         stage => stage.target.ap_angulation.direction,
     
@@ -2238,7 +2187,7 @@ function initializePhaseEditor(){
     
     bindDirectionField(
     
-        "lat_translation_direction",
+        "phase_lat_translation_direction",
     
         stage => stage.target.lat_translation.direction,
     
@@ -2251,7 +2200,7 @@ function initializePhaseEditor(){
     
     bindDirectionField(
     
-        "lat_angulation_direction",
+        "phase_lat_angulation_direction",
     
         stage => stage.target.lat_angulation.direction,
     
@@ -2264,7 +2213,7 @@ function initializePhaseEditor(){
     
     bindDirectionField(
     
-        "bone_length_direction",
+        "phase_bone_length_direction",
     
         stage => stage.target.bone_length.direction,
     
@@ -2277,7 +2226,7 @@ function initializePhaseEditor(){
     
     bindDirectionField(
     
-        "bone_rotation_direction",
+        "phase_bone_rotation_direction",
     
         stage => stage.target.bone_rotation.direction,
     
@@ -2332,13 +2281,9 @@ async function populatePhases(){
     
     populatePhaseEditor();
     
-    const plannerButton = document.getElementById("plannerButton");
-    if (plannerButton) {
-        plannerButton.onclick = function(){
-            if (window.WorkspaceManager?.show) return window.WorkspaceManager.show("treatment");
-            window.location.href = window.appAssetUrl ? window.appAssetUrl("treatment") : "./treatment";
+    document.getElementById("plannerButton").onclick = function(){
+            window.location.href = "/planner";
         };
-    }
 }
 
 
@@ -2435,19 +2380,59 @@ async function populatePlanner(){
 // TREATEMENT PLAN
 // ============================================================
 
+function getPrescriptionVerificationRows(caseData){
+    const api = window.HexapodPrescriptionVerification;
+    if(!api || typeof api.fixedStrutRows !== "function"){
+        throw new Error("Browser Prescription Verification rows are unavailable.");
+    }
+
+    const imported = caseData && caseData.treatment
+        ? caseData.treatment.verification_prescription
+        : null;
+    let sourceRows;
+    if(imported){
+        if(!Array.isArray(imported.strut_rows)){
+            throw new TypeError("The imported Verification prescription is present but its strut_rows are missing or invalid.");
+        }
+        sourceRows = imported.strut_rows;
+    }else{
+        sourceRows = api.fixedStrutRows();
+    }
+
+    if(!Array.isArray(sourceRows) || sourceRows.length === 0){
+        throw new Error("Prescription Verification requires at least one Day 0 row.");
+    }
+    if(sourceRows.length > 500){
+        throw new Error("Prescription Verification is limited to 500 daily rows per import.");
+    }
+
+    return sourceRows.map((row, rowIndex) => {
+        if(!Array.isArray(row) || row.length !== 6){
+            throw new TypeError("Verification Day " + rowIndex + " must contain exactly six strut lengths.");
+        }
+        return row.map((value, strutIndex) => {
+            const number = Number(value);
+            if(!Number.isFinite(number) || number <= 0){
+                throw new TypeError("Verification Day " + rowIndex + ", Strut " + (strutIndex + 1) + " must be a positive finite number.");
+            }
+            return number;
+        });
+    });
+}
+
 function validateR1171_2PrescriptionVerificationResult(result, expectedRows){
     const fail = message => { throw new Error("Browser Prescription Verification returned an invalid result: " + message); };
     if(!result || typeof result !== "object") fail("result is not an object.");
     if(result.mode !== "prescription_verification") fail("mode is not prescription_verification.");
 
     const rows = result.strut_array;
-    if(!Array.isArray(expectedRows) || !expectedRows.length) fail("the canonical fixed prescription is unavailable.");
-    if(!Array.isArray(rows) || rows.length !== expectedRows.length) fail("row count does not match the canonical fixed prescription.");
+    if(!Array.isArray(expectedRows) || !expectedRows.length) fail("the selected verification prescription is unavailable.");
+    if(!Array.isArray(rows) || rows.length !== expectedRows.length) fail("row count does not match the selected verification prescription.");
     if(rows.some((row,index) => !Array.isArray(row) || row.length !== 6 || row.some(value => !Number.isFinite(Number(value))))) {
         fail("each prescription row must contain six finite strut lengths.");
     }
     if(rows.some((row,index) => row.some((value,strutIndex) => Number(value) !== Number(expectedRows[index][strutIndex])))) {
-        fail("strut rows differ from the canonical fixed verification prescription.");
+        fail("strut rows differ from the selected verification prescription.");
     }
 
     const rowFields = ["daily_poses", "daily_ring_poses", "daily_bone_poses", "daily_ring_to_bone_poses", "clinical_metrics", "clinical_directions"];
@@ -2465,8 +2450,8 @@ function validateR1171_2PrescriptionVerificationResult(result, expectedRows){
     if(!result.daily_ring_to_bone_poses.every(validMatrix)) fail("daily_ring_to_bone_poses contains an invalid 4×4 transform.");
     if(!validMatrix(result.recovered_final_pose)) fail("recovered_final_pose is not a finite 4×4 transform.");
 
-    if(result.days_needed !== rows.length - 1) fail("days_needed does not match the fixed prescription.");
-    if(result.number_of_days !== rows.length) fail("number_of_days does not match the fixed prescription.");
+    if(result.days_needed !== rows.length - 1) fail("days_needed does not match the selected prescription.");
+    if(result.number_of_days !== rows.length) fail("number_of_days does not match the selected prescription.");
 
     const check = result.prescription_check;
     if(!check || check.counts_match !== true || check.six_struts_each_day !== true || check.days_needed_check !== true){
@@ -2493,7 +2478,26 @@ async function runPlanner(phaseId){
 await syncCurrentCase();
 
 const c = await ensureCurrentCase();
-if(!c || !c.treatment || !Array.isArray(c.treatment.stages)){
+if(!c){
+    throw new Error("The current CASE is not available.");
+}
+
+// R1172.9.16: Verification is a standalone prescription schedule. It does
+// not require, select, or mutate a normal treatment phase.
+if((c.metadata && c.metadata.planner) === "verification"){
+    const api = window.HexapodPrescriptionVerification;
+    if(!api || typeof api.run !== "function"){
+        throw new Error("Browser Prescription Verification is unavailable. Check prescription_verification.js loading.");
+    }
+
+    const verificationRows = getPrescriptionVerificationRows(c);
+    const result = validateR1171_2PrescriptionVerificationResult(api.run(c, { strutRows: verificationRows }), verificationRows);
+    window.__R1171_2_PRESCRIPTION_VERIFICATION_RESULT__ = result;
+
+    return result;
+}
+
+if(!c.treatment || !Array.isArray(c.treatment.stages)){
     throw new Error("The current CASE has no treatment phases.");
 }
 
@@ -2501,21 +2505,6 @@ const requestedPhaseId = phaseId || c.treatment.selected_stage_id;
 const stage = c.treatment.stages.find(s => s && s.id === requestedPhaseId);
 if(!stage){
     throw new Error("No current phase is selected or the requested phase was not found.");
-}
-
-// R1171.6: Browser JavaScript is authoritative for fixed-prescription
-// verification. No Python planner HTTP request is made.
-if((c.metadata && c.metadata.planner) === "verification"){
-    const api = window.HexapodPrescriptionVerification;
-    if(!api || typeof api.run !== "function"){
-        throw new Error("Browser Prescription Verification is unavailable. Check prescription_verification.js loading.");
-    }
-
-    const result = validateR1171_2PrescriptionVerificationResult(api.run(c), api.fixedStrutRows());
-    window.__R1171_2_PRESCRIPTION_VERIFICATION_RESULT__ = result;
-    window.treatmentSimulationReady = true;
-
-    return result;
 }
 
 const executor = window.HexapodCasePhaseExecutor;
@@ -2606,7 +2595,6 @@ if(phaseResult.complete !== true && phaseResult.schedule_generated !== true){
     );
 }
 
-window.treatmentSimulationReady = true;
 return phaseResult;
 }
 
@@ -2706,8 +2694,10 @@ async function populateTreatment(){
         buildContinuousAdjustmentPlanResult(
             c
         );
-    
-    
+
+    // R1172.9.23: capture the schedule resolved by Treatment itself.
+    // This checkpoint runs even when the Three.js iframe has never been opened.
+
     if(
         continuousPlan
     ){
@@ -2741,14 +2731,7 @@ async function populateTreatment(){
         "phase_target_summary",
         stage.target
     );
-
-    populateResidualSummary(
-        "tp_residual",
-        stage.target,
-        stage.target
-    );
-
-    setText(
+setText(
         "tp_phase_name",
         stage.name
     );
@@ -2897,11 +2880,91 @@ function renderPlannerStatus(result){
 }
 
 // ============================================================
+// R1172.9.10 — COMPLETE ALL-DAYS SIMULATION FRAME INSPECTOR
+//
+// The inspector retains the exact prepared renderer contract by reference.
+// It does not follow animation-day changes, duplicate the daily array, or
+// recalculate geometry. Capture is an explicit developer action only.
+// ============================================================
+function publishSimulationDiagnosticsSnapshot(frameContract, caseData){
+    const config = window.APP_CONFIG?.diagnostics;
+    if(!config?.enabled || !config?.captureSimulationContract) return null;
+    if(!frameContract || frameContract.contract !== "SimulationFrameV1" || !Array.isArray(frameContract.days)) return null;
+
+    const c = caseData || window.currentCase || window.CASE || window.caseData || null;
+    const stages = c?.treatment?.stages || [];
+    const provenance = {
+        case: "CASE STORED — patient/case parameters and treatment-stage prescriptions remain authoritative in window.currentCase.",
+        contract: "DERIVED — SimulationFrameV1 is assembled by shared.js from the current CASE and simulation geometry.",
+        static: {
+            ring: "DERIVED FROM CASE — static ring radius is read from CASE parameters (ANCHOR_RADIUS).",
+            bone: "APPLICATION / HARDWARE CONFIG — bone radius and section height come from DEFAULT_SIMULATION_HARDWARE.",
+            proximalBoneOrigin: "CASE STORED — copied from CASE parameters (BONE_PROX_ORIGIN)."
+        },
+        phases: "DERIVED FROM CASE — phase identity, names, colors and dates are mapped from treatment stages.",
+        days: "DERIVED FROM CASE — daily frames combine stored prescription rows/pose arrays and resolved mechanical geometry; strut endpoints and lengths are generated for renderer handoff."
+    };
+
+    const snapshot = {
+        schema: "SimulationDiagnosticsV2",
+        build: "R1172.9.10",
+        source: "shared.js / prepareBrowserSimulationFrameV1",
+        capturedAt: new Date().toISOString(),
+        provenance,
+        // Exact original contract reference. No field selection or daily-array copy.
+        contractReference: frameContract,
+        dayCount: frameContract.days.length,
+        totalDays: Math.max(0, frameContract.days.length - 1),
+        plannerHealth: (function(){
+            const selectedId = c?.treatment?.selected_stage_id;
+            let stage = stages.find(item => item && item.id === selectedId) || null;
+            if(!stage){
+                for(let i = stages.length - 1; i >= 0; i--){
+                    if(stages[i]?.prescription?.planner_health){ stage = stages[i]; break; }
+                }
+            }
+            return stage?.prescription?.planner_health || null;
+        })()
+    };
+
+    window.SimulationDiagnostics = window.SimulationDiagnostics || {};
+    window.SimulationDiagnostics.getSnapshot = function(){ return snapshot; };
+    window.SimulationDiagnostics.getDiagnostics = function(){
+        return {
+            schema: snapshot.schema,
+            build: snapshot.build,
+            source: snapshot.source,
+            capturedAt: snapshot.capturedAt,
+            contract: snapshot.contractReference.contract,
+            version: snapshot.contractReference.version,
+            dayCount: snapshot.dayCount,
+            totalDays: snapshot.totalDays,
+            hasPlannerHealth: !!snapshot.plannerHealth
+        };
+    };
+    window.dispatchEvent(new CustomEvent("simulation-diagnostics-updated", { detail: { captured: true, dayCount: snapshot.dayCount } }));
+    return snapshot;
+}
+
+// Explicit developer action: capture the complete currently prepared contract.
+window.SimulationDiagnostics = window.SimulationDiagnostics || {};
+window.SimulationDiagnostics.captureCurrent = function(){
+    const config = window.APP_CONFIG?.diagnostics;
+    if(!config?.enabled || !config?.captureSimulationContract) {
+        throw new Error("Simulation contract inspection is disabled in app_config.js.");
+    }
+    const contract = window.__CURRENT_SIMULATION_FRAME_V1__ || null;
+    if(!contract) throw new Error("No prepared SimulationFrameV1 is available. Open the simulation first.");
+    const caseData = window.currentCase || window.CASE || window.caseData || null;
+    return publishSimulationDiagnosticsSnapshot(contract, caseData);
+};
+
+// ============================================================
 // R1172.1 — LIVE PLAN-TO-ANIMATION REFRESH
 //
 // Builds and publishes SimulationFrameV1 without looking up an
 // iframe, SVG Viewer, DOM element, or renderer API.
-// The legacy SVG viewer may consume the same `frames` output later.
+// Three.js consumes the renderer-neutral `frames` output through SimulationFrameV1.
 // ============================================================
 function prepareBrowserSimulationFrameV1(){
 
@@ -2932,11 +2995,15 @@ function prepareBrowserSimulationFrameV1(){
         throw new Error("Continuous treatment plan is incomplete.");
     }
 
+    const viewerPhases = Array.isArray(plan.viewer_phases)
+        ? plan.viewer_phases
+        : (c.treatment?.stages || []);
+
     const frames = buildContinuousSimulationGeometry(
         plan,
         c.parameters,
         DEFAULT_SIMULATION_HARDWARE,
-        c.treatment?.stages || []
+        viewerPhases
     );
 
     if(
@@ -2952,7 +3019,7 @@ function prepareBrowserSimulationFrameV1(){
         frames,
         c.parameters,
         DEFAULT_SIMULATION_HARDWARE,
-        c.treatment?.stages || []
+        viewerPhases
     );
 
     if(
@@ -2981,6 +3048,10 @@ function prepareBrowserSimulationFrameV1(){
         }
     }
 
+    // R1172.9.10: retain the prepared contract by reference for optional,
+    // user-initiated inspection. No diagnostic snapshot is created automatically.
+    window.__CURRENT_SIMULATION_FRAME_V1__ = frameContract;
+
     // Preserve the established handoff key consumed by three_test.html.
     localStorage.setItem(
         "simulationFrameV1",
@@ -2990,110 +3061,56 @@ function prepareBrowserSimulationFrameV1(){
     return { c, plan, frames, frameContract };
 }
 
-async function ensureTreatmentSimulationLoaded(){
-
-    const host = document.getElementById("simulationHost");
-    if(!host) return;
-
-    if(!window.treatmentSimulationReady){
-        host.innerHTML = `
-            <div class="treatmentSimulationGuide">
-                <h3>Treatment Simulation</h3>
-                <p>No treatment simulation has been generated yet.</p>
-                <p>Use <strong>Update Treatment Plan</strong> to generate the daily strut adjustment plan and its simulation.</p>
-                <p>The treatment simulation uses the generated daily strut prescription together with the current hardware, mounting, and bone/deformity parameters.</p>
-                <p>For prescription verification, a specific daily strut prescription can also be supplied for simulation.</p>
-            </div>
-        `;
-        return;
-    }
-
-    showPlannerOverlay(
-        "Generating Treatment Simulation",
-        "Building renderer-neutral simulation data...",
-        "Preparing daily poses and six strut endpoints..."
-    );
-
-    // IMPORTANT: publish SimulationFrameV1 before creating or looking up
-    // the legacy SVG iframe. The contract is now an independent product.
-    let prepared;
-    try {
-        prepared = prepareBrowserSimulationFrameV1();
-    }
-    catch(err){
-        hidePlannerOverlay();
-        host.innerHTML = `
-            <div class="treatmentSimulationGuide">
-                <h3>Treatment Simulation</h3>
-                <p>Renderer-neutral simulation data could not be prepared.</p>
-                <p>${String(err)}</p>
-            </div>
-        `;
-        return;
-    }
-
-    const existingFrame = document.getElementById("simulationFrame");
-    if(existingFrame){
-        try {
-            if(existingFrame.contentWindow && existingFrame.contentWindow.Viewer){
-                installBrowserSimulationIntoViewer(prepared);
-            }
-            hidePlannerOverlay();
-        }
-        catch(err){
-            hidePlannerOverlay();
-            host.innerHTML = `
-                <div class="treatmentSimulationGuide">
-                    <h3>Treatment Simulation</h3>
-                    <p>Existing SVG viewer could not be updated.</p>
-                    <p>${String(err)}</p>
-                </div>
-            `;
-        }
-        return;
-    }
-
-    host.innerHTML = "";
-
-    const frame = document.createElement("iframe");
-    frame.id = "simulationFrame";
-    frame.src = window.appAssetUrl ? window.appAssetUrl("viewer_v2.html?t=" + Date.now()) : "./viewer_v2.html?t=" + Date.now();
-    frame.style.width = "100%";
-    frame.style.height = "900px";
-    frame.style.border = "none";
-
-    frame.onload = function(){
-        try {
-            installBrowserSimulationIntoViewer(prepared);
-            hidePlannerOverlay();
-        }
-        catch(err){
-            hidePlannerOverlay();
-            host.innerHTML = `
-                <div class="treatmentSimulationGuide">
-                    <h3>Treatment Simulation</h3>
-                    <p>Browser simulation could not be loaded.</p>
-                    <p>${String(err)}</p>
-                </div>
-            `;
-        }
-    };
-
-    frame.onerror = function(){
-        hidePlannerOverlay();
-        host.innerHTML = `
-            <div class="treatmentSimulationGuide">
-                <h3>Treatment Simulation</h3>
-                <p>The treatment simulation could not be loaded.</p>
-            </div>
-        `;
-    };
-
-    host.appendChild(frame);
-}
-
-
 function buildContinuousAdjustmentPlanResult(c){
+
+    if(c && c.metadata && c.metadata.planner === "verification"){
+        const api = window.HexapodPrescriptionVerification;
+        if(!api || typeof api.run !== "function" || typeof api.fixedStrutRows !== "function"){
+            throw new Error("Browser Prescription Verification is unavailable for the viewer schedule.");
+        }
+        const verificationRows = getPrescriptionVerificationRows(c);
+        const verification = validateR1171_2PrescriptionVerificationResult(
+            api.run(c, { strutRows: verificationRows }), verificationRows
+        );
+        const count = verification.strut_array.length;
+        const repeat = value => Array.from({length:count}, () => value);
+        // Verification uses the same treatment start-date control as Normal
+        // Planning. Initial is undated; Day 1 is the selected date.
+        const dateInput = document.getElementById("tp_start_date");
+        const startDate = dateInput && dateInput.value ? dateInput.value : null;
+        const rowDates = repeat(null);
+        if(startDate){
+            const base = parseLocalDate(startDate);
+            if(base){
+                for(let i=1;i<count;i++){
+                    const d = new Date(base.getTime());
+                    d.setDate(d.getDate() + i - 1);
+                    rowDates[i] = formatDateInputValue(d);
+                }
+            }
+        }
+        return {
+            mode: "prescription_verification",
+            strut_array: verification.strut_array,
+            daily_poses: verification.daily_poses,
+            daily_ring_poses: verification.daily_ring_poses,
+            clinical_metrics: verification.clinical_metrics,
+            clinical_directions: verification.clinical_directions,
+            clinical_targets: repeat(null),
+            phase_ids: repeat("prescription-verification"),
+            phase_indices: repeat(0),
+            phase_names: repeat("Prescription Verification"),
+            row_dates: rowDates,
+            start_date: startDate,
+            days_needed: verification.days_needed,
+            viewer_phases: [{
+                id: "prescription-verification",
+                name: "Prescription Verification",
+                startDate: startDate,
+                endDate: null
+            }]
+        };
+    }
 
     if(
         !c ||
@@ -3121,6 +3138,8 @@ function buildContinuousAdjustmentPlanResult(c){
     const mergedClinicalMetrics = [];
 
     const mergedClinicalDirections = [];
+
+    const mergedClinicalTargets = [];
     
     const phaseIds = [];
     
@@ -3141,6 +3160,28 @@ function buildContinuousAdjustmentPlanResult(c){
 
             const plan =
                 stage?.prescription;
+
+            // Normal treatment phase targets use the signed clinical
+            // coordinate convention used by the mechanical parameter builder.
+            const stageTarget = stage?.target;
+            const targetKeys = [
+                "ap_translation", "ap_angulation", "lat_translation",
+                "lat_angulation", "bone_length", "bone_rotation"
+            ];
+            const hasCompleteClinicalTarget = !!stageTarget && targetKeys.every(key =>
+                    stageTarget[key] && typeof stageTarget[key] === "object" &&
+                    Number.isFinite(Number(stageTarget[key].value))
+                );
+            const clinicalTarget = !hasCompleteClinicalTarget
+                ? null
+                : {
+                    ap_translation: r1172_2SignedCaseValue(stageTarget.ap_translation, "medial", "stage.target.ap_translation"),
+                    ap_angulation: r1172_2SignedCaseValue(stageTarget.ap_angulation, "valgus", "stage.target.ap_angulation"),
+                    lat_translation: r1172_2SignedCaseValue(stageTarget.lat_translation, "anterior", "stage.target.lat_translation"),
+                    lat_angulation: r1172_2SignedCaseValue(stageTarget.lat_angulation, "posterior", "stage.target.lat_angulation"),
+                    bone_length: r1172_2SignedCaseValue(stageTarget.bone_length, "short", "stage.target.bone_length"),
+                    bone_rotation: r1172_2SignedCaseValue(stageTarget.bone_rotation, "external", "stage.target.bone_rotation")
+                };
 
 
             if(
@@ -3265,6 +3306,10 @@ function buildContinuousAdjustmentPlanResult(c){
                         null
                 );
 
+                mergedClinicalTargets.push(
+                    clinicalTarget ? structuredClone(clinicalTarget) : null
+                );
+
                 phaseIds.push(
                     stage.id
                 );
@@ -3377,6 +3422,8 @@ function buildContinuousAdjustmentPlanResult(c){
         clinical_directions:
             mergedClinicalDirections,
 
+        clinical_targets: mergedClinicalTargets,
+
         start_date:
             firstStartDate,
 
@@ -3394,7 +3441,7 @@ function buildContinuousAdjustmentPlanResult(c){
 // BROWSER SIMULATION GEOMETRY
 //
 // Converts stored CASE poses directly into the geometry
-// vocabulary already consumed by viewer_v2.html.
+// renderer-neutral geometry vocabulary consumed by SimulationFrameV1.
 //
 // IMPORTANT:
 //   No FK / IK is performed here.
@@ -4896,6 +4943,9 @@ function buildSimulationFrameContractV1(
 
                     clinicalDirections:
                         frame.clinicalDirections ?? null,
+
+                    clinicalTargets:
+                        frame.clinicalTargets ?? null,
         
                     proximalRingPose:
                         structuredClone(
@@ -5041,6 +5091,9 @@ function buildContinuousSimulationGeometry(
 
             frame.clinicalDirections =
                 continuousPlan.clinical_directions?.[i] ?? null;
+
+            frame.clinicalTargets =
+                continuousPlan.clinical_targets?.[i] ?? null;
         
             frames.push(frame);
         
@@ -5176,15 +5229,6 @@ function publishThreePrototypeHandoff(preparedData){
 
     localStorage.setItem("threeTestFrames", JSON.stringify(threeTestFrames));
 
-    const debug = document.getElementById("simulationDebug");
-    if(debug){
-        debug.textContent =
-            "R1172.1 · SimulationFrameV1 published for Three.js handoff\n" +
-            "Days: " + frameContract.days.length +
-            " · Struts/day: " + frameContract.days[0].struts.length +
-            " · Ring radius: " + frameContract.static.ring.radius + " mm" +
-            " · Bone radius: " + frameContract.static.bone.radius + " mm";
-    }
 
     return { c, plan, frames, frameContract, threeTestFrames };
 }
@@ -5195,10 +5239,20 @@ function loadThreePrototypeFromTreatment(){
 
     const iframe = document.getElementById("threePrototypeFrame");
     const status = document.getElementById("threePrototypeStatus");
+    if(status){ status.textContent = ""; status.style.display = "none"; }
 
     if(!iframe){
-        if(status) status.textContent = "Three.js cannot start: iframe element is missing.";
+        if(status){ status.style.display = "block"; status.textContent = "Three.js cannot start: iframe element is missing."; }
         return false;
+    }
+
+    // Permit the embedded Three.js document to request browser fullscreen.
+    iframe.setAttribute("allowfullscreen", "");
+    const existingAllow = (iframe.getAttribute("allow") || "")
+        .split(";").map(part => part.trim()).filter(Boolean);
+    if(!existingAllow.some(part => part === "fullscreen" || part.startsWith("fullscreen "))){
+        existingAllow.push("fullscreen");
+        iframe.setAttribute("allow", existingAllow.join("; "));
     }
 
     try{
@@ -5213,37 +5267,30 @@ function loadThreePrototypeFromTreatment(){
                     window.location.origin
                 );
                 if(status){
-                    status.textContent = "R1172.1 · Existing Three.js viewer updated in place. " +
-                        handoff.frameContract.days.length + " days · viewer state retained.";
+                    status.textContent = "";
+                    status.style.display = "none";
                 }
-            }else if(status){
-                status.textContent = "R1172.1 · SimulationFrameV1 published. Three.js is still loading; latest data will be read at startup.";
             }
             return true;
-        }
-
-        if(status){
-            status.textContent = "R1172.1 · SimulationFrameV1 published. Starting Three.js… " +
-                handoff.frameContract.days.length + " days, six struts/day.";
         }
 
         iframe.dataset.viewerLoaded = "false";
         iframe.onload = function(){
             iframe.dataset.viewerLoaded = "true";
-            if(status) status.textContent = "R1172.1 · Three.js loaded. Viewer remains mounted between Treatment tabs.";
+            if(status){ status.textContent = ""; status.style.display = "none"; }
         };
         iframe.onerror = function(){
             iframe.dataset.viewerLoaded = "false";
             iframe.removeAttribute("src");
-            if(status) status.textContent = "R1172.1 · Three.js document failed to load. Check that three_test.html is included in the static deployment, then reopen this tab to retry.";
+            if(status){ status.style.display = "block"; status.textContent = "Three.js document failed to load. Check the Flask route /three_test.html, then reopen this tab to retry."; }
         };
 
         // First visit only. The iframe remains alive on subsequent tab visits.
-        iframe.src = window.appAssetUrl ? window.appAssetUrl("three_test.html?v=R1172.7.1") : "./three_test.html?v=R1172.7.1";
+        iframe.src = "/three_test.html?v=R1172.9.24";
         return true;
 
     }catch(error){
-        if(status) status.textContent = "R1172.1 · Three.js handoff not started: " + String(error && error.message || error);
+        if(status){ status.style.display = "block"; status.textContent = "Three.js handoff not started: " + String(error && error.message || error); }
         return false;
     }
 }
@@ -5264,286 +5311,6 @@ function refreshThreePrototypeAfterPlanCommit(){
     // still loading, its startup read sees the newly published contract.
     return loadThreePrototypeFromTreatment();
 }
-
-function installBrowserSimulationIntoViewer(preparedData){
-
-    const prepared = preparedData || prepareBrowserSimulationFrameV1();
-    const c = prepared.c;
-    const plan = prepared.plan;
-    const frames = prepared.frames;
-    const frameContract = prepared.frameContract;
-
-    if(!c || !plan || !Array.isArray(frames) || !frameContract){
-        throw new Error("Prepared SimulationFrameV1 data is incomplete.");
-    }
-
-    publishThreePrototypeHandoff(prepared);
-
-    const iframe = document.getElementById("simulationFrame");
-    if(!iframe){
-        throw new Error("Simulation iframe not found.");
-    }
-
-    const viewerWindow = iframe.contentWindow;
-    if(!viewerWindow || !viewerWindow.Viewer){
-        throw new Error("Viewer not available.\niframe URL = " + iframe.src);
-    }
-
-    const viewer = viewerWindow.Viewer;
-    viewer.case = c;
-    viewer.caseParams = c.parameters;
-    viewer.case.prescription = plan.strut_array;
-    viewer.dataOut = frames;
-
-    viewerWindow.TOTAL_DAYS = Math.max(0, frames.length - 1);
-    const slider = viewerWindow.document.getElementById("daySlider");
-    if(slider) slider.max = viewerWindow.TOTAL_DAYS;
-
-    viewer.traceOut = plan.daily_poses.map(pose => [
-        Number(pose[0][3]),
-        Number(pose[1][3]),
-        Number(pose[2][3])
-    ]);
-
-    viewer.boundsOut = [];
-    viewer.colorMap = [
-        "#4A90E2",
-        "#50B83C",
-        "#9B59B6",
-        "#F5A623",
-        "#E45C5C",
-        "#00A6A6"
-    ];
-
-    viewer.currentDay = 0;
-    viewerWindow.renderFrame();
-
-    return { plan, frames, frameContract, viewer };
-}
-
-
-//-------
-function testSimulationGeometry(){
-
-    const debug =
-        document.getElementById(
-            "simulationDebug"
-        );
-
-    try {
-
-        const c =
-            window.currentCase ||
-            window.CASE ||
-            window.caseData;
-
-        if(!c){
-
-            debug.textContent =
-                "TEST FAILED: CASE not found";
-
-            return;
-
-        }
-
-
-        const plan =
-            buildContinuousAdjustmentPlanResult(
-                c
-            );
-
-
-        if(
-            !plan ||
-            !Array.isArray(plan.daily_poses) ||
-            !Array.isArray(plan.daily_ring_poses)
-        ){
-
-            debug.textContent =
-                "TEST FAILED: continuous pose data not found";
-
-            return;
-
-        }
-
-
-        // ----------------------------------------------------
-        // Generate ALL simulation frames in the browser.
-        // ----------------------------------------------------
-
-        const frames =
-            buildContinuousSimulationGeometry(
-
-                plan,
-
-                c.parameters
-
-            );
-
-
-        if(
-            !frames ||
-            frames.length !==
-            plan.strut_array.length
-        ){
-
-            debug.textContent =
-
-                "TEST FAILED: frame count mismatch\n\n" +
-
-                "strut rows: " +
-                plan.strut_array.length + "\n" +
-
-                "generated frames: " +
-                (
-                    frames
-                        ? frames.length
-                        : "null"
-                );
-
-            return;
-
-        }
-
-
-        // ----------------------------------------------------
-        // Connect to viewer iframe.
-        // ----------------------------------------------------
-
-        const iframe =
-            document.getElementById(
-                "simulationFrame"
-            );
-
-
-        if(!iframe){
-
-            debug.textContent =
-                "TEST FAILED: simulationFrame not found";
-
-            return;
-
-        }
-
-
-        const viewerWindow =
-            iframe.contentWindow;
-
-
-        if(
-            !viewerWindow ||
-            !viewerWindow.Viewer
-        ){
-
-            debug.textContent =
-                "TEST FAILED: Viewer not found";
-
-            return;
-
-        }
-
-
-        const viewer =
-            viewerWindow.Viewer;
-
-
-        if(
-            !viewer.dataOut ||
-            !viewer.dataOut.length
-        ){
-
-            debug.textContent =
-                "TEST FAILED: Viewer dataOut empty";
-
-            return;
-
-        }
-
-
-        // ----------------------------------------------------
-        // Temporary legacy compatibility.
-        //
-        // The current viewer still asks for
-        // case.prescription during rendering.
-        // ----------------------------------------------------
-
-        viewer.case.prescription =
-            plan.strut_array;
-
-
-        // ----------------------------------------------------
-        // Preserve the existing day metadata, but replace
-        // every day's geometry with the new browser-generated
-        // geometry.
-        // ----------------------------------------------------
-
-        const count =
-            Math.min(
-                viewer.dataOut.length,
-                frames.length
-            );
-
-
-        for(let i = 0; i < count; i++){
-
-            viewer.dataOut[i] = {
-
-                ...viewer.dataOut[i],
-
-                ...frames[i]
-
-            };
-
-        }
-
-
-        // ----------------------------------------------------
-        // Render Day 0.
-        // ----------------------------------------------------
-
-        viewer.currentDay = 0;
-
-        viewerWindow.renderFrame();
-
-
-        debug.textContent =
-
-            "CONTINUOUS SIMULATION TEST PASS\n\n" +
-
-            "Adjustment rows: " +
-            plan.strut_array.length + "\n" +
-
-            "Daily poses: " +
-            plan.daily_poses.length + "\n" +
-
-            "Daily ring poses: " +
-            plan.daily_ring_poses.length + "\n" +
-
-            "Browser frames: " +
-            frames.length + "\n\n" +
-
-            "All viewer days replaced with\n" +
-            "browser-generated geometry.\n\n" +
-
-            "Day 0 rendered successfully.\n\n" +
-
-            "NEXT TEST: move the Day slider / Play.";
-
-    }
-
-    catch(err){
-
-        debug.textContent =
-
-            "CONTINUOUS SIMULATION TEST ERROR\n\n" +
-
-            String(err);
-
-    }
-
-}
-
-//-------
 
 function renderAdjustmentPlan(
     plannerResult
@@ -5760,13 +5527,27 @@ function renderAdjustmentPlan(
 
     }
 
+    const rowPhaseIds = new Set(
+        Array.isArray(plannerResult.phase_ids)
+            ? plannerResult.phase_ids.filter(Boolean)
+            : []
+    );
+    const legendStages = stages.filter(stage => rowPhaseIds.has(stage.id));
+    if(plannerResult.mode === "prescription_verification"){
+        phaseColorMap["prescription-verification"] = phaseColors[0];
+    }
+    const verificationLegend = plannerResult.mode === "prescription_verification"
+        ? [{id:"prescription-verification", name:"Prescription Verification", status:"", _phaseColor:phaseColors[0]}]
+        : [];
+    const visibleLegendStages = legendStages.length ? legendStages : verificationLegend;
+
     const phaseLegend =
-        stages.length > 0
+        visibleLegendStages.length > 0
         ?
         `
         <div class="plannerPhaseLegend">
 
-            ${stages.map(
+            ${visibleLegendStages.map(
                 (stage,index) => {
 
                     const isApproved =
@@ -5774,9 +5555,7 @@ function renderAdjustmentPlan(
                         approvedPhaseId;
 
                     const color =
-                        phaseColorMap[
-                            stage.id
-                        ];
+                        stage._phaseColor || phaseColorMap[stage.id] || phaseColors[index % phaseColors.length];
 
                     const phaseName =
                         stage.name &&
@@ -8143,6 +7922,42 @@ async function updateAdjustmentPlan(
     const c =
         await ensureCurrentCase();
 
+    // Pin this planner transaction to the mode active when it starts.
+    // Nested cascade work inherits the same mode even if UI state changes.
+    const planningMode = normalizePlannerMode(
+        cascadeContext && cascadeContext.plannerMode
+            ? cascadeContext.plannerMode
+            : (c.metadata && c.metadata.planner)
+    );
+
+    // R1172.9.24 — Prescription Verification is a standalone FK check.
+    // It must never enter the normal phase-planning transaction below:
+    // that path commits plannerResult into stage.prescription and creates
+    // phase snapshots/Undo transactions. Doing so allowed the 84-row
+    // verification schedule to overwrite a Normal phase's 7-row plan.
+    // Keep Verification output in its dedicated runtime result and let
+    // buildContinuousAdjustmentPlanResult() publish it to the viewer.
+    if(planningMode === "verification" && !cascadeContext){
+        try{
+            const verificationResult = await runPlanner();
+            await populateTreatment();
+            if(typeof window.refreshThreePrototypeAfterPlanCommit === "function"){
+                window.refreshThreePrototypeAfterPlanCommit();
+            }
+            updateUndoButton();
+            if(typeof window.updateCurrentCaseInspector === "function"){
+                window.updateCurrentCaseInspector();
+            }
+            return verificationResult;
+        }catch(error){
+            console.error("[R1172.9.24] Prescription Verification failed", error);
+            alert(error && error.message ? error.message : String(error));
+            return null;
+        }finally{
+            hidePlannerOverlay();
+            if(button) button.disabled = false;
+        }
+    }
 
     const stage =
         currentStage();
@@ -8210,13 +8025,14 @@ async function updateAdjustmentPlan(
     // runPlanner().  Do NOT clone stage here: stage.target may
     // already contain a newly edited user value.
     //
-    // savedStageSnapshots[stage.id] represents the last
+    // savedStageSnapshotsByMode[mode][stage.id] represents the last
     // accepted plan, not the current editable CASE.
     // ----------------------------------------------------
 
     const committedStageSnapshot =
         getCommittedStageSnapshot(
-            stage
+            stage,
+            planningMode
         );
 
     // --------------------------------------------------------
@@ -8277,6 +8093,9 @@ async function updateAdjustmentPlan(
             transactionId:
                 crypto.randomUUID(),
 
+            plannerMode:
+                planningMode,
+
             rootStageId:
                 stage.id,
 
@@ -8288,6 +8107,10 @@ async function updateAdjustmentPlan(
 
         };
 
+    }
+
+    if(!cascadeContext.plannerMode){
+        cascadeContext.plannerMode = planningMode;
     }
 
 
@@ -8804,7 +8627,8 @@ async function updateAdjustmentPlan(
 
             const previousSnapshot =
                 getCommittedStageSnapshot(
-                    previousPhase
+                    previousPhase,
+                    cascadeContext.plannerMode
                 );
 
             if(
@@ -9903,11 +9727,13 @@ async function updateAdjustmentPlan(
             isRootTransaction
         ){
 
-            window.lastUndoTransaction =
-                captureUndoTransaction(
-                    cascadeContext
-                );
-            updateUndoButton();
+            saveUndoTransactionForCurrentMode(
+
+                captureUndoTransaction(cascadeContext),
+
+                cascadeContext.plannerMode
+
+            );
         }
 
 
@@ -10344,7 +10170,8 @@ async function updateAdjustmentPlan(
         ){
 
             saveCommittedStageSnapshot(
-                stage
+                stage,
+                cascadeContext.plannerMode
             );
 
 
@@ -10520,7 +10347,8 @@ finally{
                 ){
             
                     saveCommittedStageSnapshot(
-                        earlyStartPhase
+                        earlyStartPhase,
+                        cascadeContext.plannerMode
                     );
             
                 }
@@ -10531,11 +10359,13 @@ finally{
                 isRootTransaction
             ){
 
-                window.lastUndoTransaction =
-                    captureUndoTransaction(
-                        cascadeContext
-                    );
-                updateUndoButton();
+                saveUndoTransactionForCurrentMode(
+
+                    captureUndoTransaction(cascadeContext),
+
+                    cascadeContext.plannerMode
+
+                );
             }
 
             if(
@@ -10567,7 +10397,8 @@ finally{
         ){
 
             saveCommittedStageSnapshot(
-                stage
+                stage,
+                cascadeContext.plannerMode
             );
 
         }
@@ -10589,7 +10420,8 @@ finally{
             ){
         
                 saveCommittedStageSnapshot(
-                    earlyStartPhase
+                    earlyStartPhase,
+                    cascadeContext.plannerMode
                 );
         
             }
@@ -10680,22 +10512,7 @@ finally{
         renderAdjustmentPlan(
             continuousPlan
         );
-
-
-        const frame =
-            document.getElementById(
-                "simulationFrame"
-            );
-
-
-        if(frame){
-
-            frame.remove();
-
-        }
-
-
-        setPlannerStatus(
+setPlannerStatus(
             "Ready"
         );
 

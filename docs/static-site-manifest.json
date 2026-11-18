@@ -1,8 +1,9 @@
 {
-  "build": "R1172.8.0",
+  "build": "R1172.9.24",
   "entry": "index.html",
   "hostMode": "static",
   "includedFiles": [
+    "app_config.js",
     "shared.css",
     "shared.js",
     "app_features.js",
@@ -43,7 +44,7 @@
     "phases_workspace.html",
     "treatment_workspace.html",
     "reports_workspace.html",
-    "viewer_v2.html",
+    "prescription_import.js",
     "three_test.html",
     "index.html",
     "VTK_Test/vtk_dist/**"

@@ -38,11 +38,24 @@
 
             </div>
 
-            <div style="margin-top:10px;padding:9px 10px;border:1px solid #c58b32;border-left:4px solid #c58b32;border-radius:4px;background:#fff8e8;color:#5d4215;font-size:12px;line-height:1.45;">
-                <strong>R1172.0 · TEMPORARY PREVIEW SCHEDULE MODE</strong><br>
-                Normal Planning generates legacy fixed-duration daily rows for animation and engineering review. It does not enforce the strict JavaScript daily movement limits or certify clinical target attainment. Do not use these preview schedules as approved patient prescriptions.
+            <div id="plannerModeNotice" style="margin-top:10px;padding:9px 10px;border:1px solid #3b82a0;border-left:4px solid #3b82a0;border-radius:4px;background:#eef8fc;color:#17445a;font-size:12px;line-height:1.45;">
+                <strong id="plannerModeNoticeTitle">R1172.9.5 · STRICT BROWSER PLANNER</strong><br>
+                <span id="plannerModeNoticeText">Normal Planning uses the completion-driven browser JavaScript planner. Actual daily movement is checked against the configured mechanical limits; target completion is evaluated separately. Planner output still requires appropriate clinical review and approval.</span>
             </div>
 
+        </div>
+
+        <div class="section" id="verificationPrescriptionImportSection">
+            <h3>Verification Prescription (Excel)</h3>
+            <p style="font-size:12px;line-height:1.45;margin:4px 0 8px;">
+                Import an .xlsx, .xls or .csv file. Use the first worksheet with exactly six columns (headers Strut 1 through Strut 6, or no header). The first numeric data row is Day 0; each following row is the next day. Do not add a Day column.
+            </p>
+            <input id="verificationPrescriptionFile" type="file" accept=".xlsx,.xls,.csv" style="width:100%;font-size:12px;">
+            <div id="verificationPrescriptionImportStatus" role="status" aria-live="polite" style="font-size:12px;line-height:1.45;margin-top:7px;">Using the built-in verification prescription until a file is imported.</div>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:7px;">
+                <button id="clearVerificationPrescriptionButton" type="button" class="moduleButton" style="font-size:12px;padding:5px 8px;">Use built-in prescription</button>
+            </div>
+            <div id="verificationPrescriptionPreview" style="font-size:11px;overflow-x:auto;margin-top:8px;"></div>
         </div>
         
         <div class="section">
@@ -77,25 +90,7 @@
             </div>
     
         </div>
-    
-        <div class="section">
-    
-            <h3>
-    
-                Residual Deformity
-    
-            </h3>
-    
-            <div
-                id="tp_residual">
-    
-                (Planner not run)
-    
-            </div>
-    
-        </div>
-    
-        <div class="section">
+<div class="section">
     
             <h3>
     
@@ -145,8 +140,7 @@
                 Undo
     
             </button>
-    
-        </div>
+</div>
     
         <div
             class="section"
@@ -215,15 +209,7 @@
 
     <div class="rightPanel">
         <div class="workspaceTabs">
-            <button
-                id="treatmentSimTab"
-                class="moduleButton">
-
-                Treatment Simulation
-
-            </button>
-
-            <button
+<button
                 id="strutAdjustmentTab"
                 class="moduleButton">
 
@@ -246,16 +232,6 @@
             </button>
         </div>
         <div id="planningWorkspace">
-            <div id="treatmentSimWorkspace">
-                <div id="simulationHost"></div>
-                
-  <button type="button" onclick="testSimulationGeometry()">
-    TEST Simulation Geometry
-</button>              
-                
- <div id="simulationDebug"></div>
- 
-            </div>
             <div
                 id="strutAdjustmentWorkspace"
                 style="display:none;">
@@ -315,4 +291,4 @@
     </div>
 </div>
 
-<script src="./treatment.js?v=R1172.0"></script>
+<script src="./treatment.js?v=R1172.9.24"></script>

@@ -56,6 +56,31 @@
     ];
   }
 
+  // Exhaustive independent floor/ceil choices for six whole-mm struts.
+  // Keep the legacy Round/Floor/Ceil candidates first so equal-score ties
+  // retain their established preference. The remaining unique combinations
+  // are appended in deterministic bit-mask order (S1 is the least-significant bit).
+  function generateFloorCeilCombinations(idealStruts){
+    const v=finiteVector(idealStruts,6,'ideal strut lengths');
+    const candidates=[];
+    const seen=new Set();
+    const add=(name,prescription)=>{
+      const key=prescription.join(',');
+      if(seen.has(key))return;
+      seen.add(key);
+      candidates.push({name,prescription});
+    };
+
+    for(const item of generateRoundingCandidates(v)) add(item.name,item.prescription);
+
+    for(let mask=0;mask<64;mask++){
+      const bits=mask.toString(2).padStart(6,'0');
+      const prescription=v.map((value,index)=>(mask&(1<<index))?Math.ceil(value):Math.floor(value));
+      add('FC-'+bits,prescription);
+    }
+    return candidates;
+  }
+
   function rotationErrorDegrees(recoveredPose,clinicalPose){
     // Relative rotation is R_recovered^T * R_clinical.
     let trace=0;
@@ -122,12 +147,65 @@
     );
   }
 
+  // R1172.9.3 — bounded recovery neighborhood used only when the normal
+  // 64-candidate search cannot find a feasible/progressing step. Each strut
+  // tests the nearest whole-mm value and its +/-1 mm neighbors (3^6 = 729).
+  function generateExpandedNeighborhoodCandidates(idealStruts, radius = 1){
+    const v=finiteVector(idealStruts,6,'ideal strut lengths');
+    const r=Number(radius);
+    if(!Number.isInteger(r)||r<1||r>2) throw new RangeError('Expanded neighborhood radius must be an integer from 1 to 2');
+    const centers=v.map(roundHalfToEven);
+    const candidates=[];
+    const seen=new Set();
+    const count=2*r+1;
+    const total=Math.pow(count,6);
+    for(let index=0;index<total;index++){
+      let code=index;
+      const digits=new Array(6);
+      for(let j=0;j<6;j++){
+        digits[j]=code%count;
+        code=Math.floor(code/count);
+      }
+      const prescription=centers.map((center,j)=>center+digits[j]-r);
+      const key=prescription.join(',');
+      if(seen.has(key)) continue;
+      seen.add(key);
+      candidates.push({name:'N'+count+'-'+digits.slice().reverse().join(''),prescription});
+    }
+    return candidates;
+  }
+
+  function expandedSearch(idealStruts,clinicalPose,recoverPose,dayState,options={}){
+    const radius=options.neighborhoodRadiusMm??1;
+    return evaluateCandidates(
+      generateExpandedNeighborhoodCandidates(idealStruts,radius),
+      clinicalPose,
+      recoverPose,
+      dayState
+    );
+  }
+
+  // Strict mode starts with 64 floor/ceil combinations. The trajectory planner
+  // may invoke expandedSearch() as a fallback. PYTHON_COMPAT remains unchanged.
+  function strictSearch(idealStruts,clinicalPose,recoverPose,dayState){
+    return evaluateCandidates(
+      generateFloorCeilCombinations(idealStruts),
+      clinicalPose,
+      recoverPose,
+      dayState
+    );
+  }
+
   root.HexapodPlannerCandidates={
     roundHalfToEven,
     generateRoundingCandidates,
+    generateFloorCeilCombinations,
+    generateExpandedNeighborhoodCandidates,
     rotationErrorDegrees,
     evaluateCandidates,
-    simpleSearch
+    simpleSearch,
+    strictSearch,
+    expandedSearch
   };
   if(typeof module!=='undefined'&&module.exports) module.exports=root.HexapodPlannerCandidates;
 })(typeof window!=='undefined'?window:globalThis);

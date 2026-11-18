@@ -108,10 +108,13 @@
   }
   async function openCase(file, options={}){
     if(!file) return false;
+    const timingDetail=(label,started)=>global.ModeSwitchTiming?.detail(label,performance.now()-started);
     const confirmBeforeOpen = options?.confirmBeforeOpen !== false;
     return queueOperation(async()=>{
       emitStatus('opening','Opening portable case · validating ZIP before installation…');
+      let phaseStarted=performance.now();
       await waitForBridge();
+      timingDetail('Case import · wait for AP/LAT bridge',phaseStarted);
       if(global.__R871_AUTO_WIP_RESTORE_PROMISE){
         try{ await global.__R871_AUTO_WIP_RESTORE_PROMISE; }catch(_){ /* importer validates and attempts rollback */ }
       }
@@ -121,7 +124,9 @@
       // that single installer and forward its actual diagnostic to callers.
       const report = document.getElementById('r864BundleValidationReport');
       if(report) report.textContent = 'R1138 — IMPORT IN PROGRESS · Waiting for the validated AP/LAT installer…';
+      phaseStarted=performance.now();
       const result = await global.r885OpenCaseBundleFile(file, { confirmBeforeOpen });
+      timingDetail('Case import · validated bundle installer (ZIP validation + AP/LAT install)',phaseStarted);
       if(result!==true){
         const detail = String(report?.textContent || '').trim();
         const message = detail && !/^R1138 — IMPORT IN PROGRESS/.test(detail)
@@ -132,7 +137,9 @@
         throw new Error(message);
       }
       global.__CASE_FILE_LAST_OPEN_DIAGNOSTIC = null;
+      phaseStarted=performance.now();
       await refreshPatientAfterOpen();
+      timingDetail('Case import · refresh Patient/workflow/dashboard',phaseStarted);
       portableDirty = false;
       nonXrayDirty = false;
       xrayLocallySaved = false;

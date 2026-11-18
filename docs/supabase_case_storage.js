@@ -10,7 +10,7 @@
  */
 (function installSupabaseCaseStorage(global) {
   'use strict';
-  if (global.SupabaseCaseStorage?.VERSION === 'R1145.8') return; // Preserve idempotency for this adapter revision only.
+  if (global.SupabaseCaseStorage?.VERSION === 'R1145.9') return; // Preserve idempotency for this adapter revision only.
 
   let client = null;
   // One in-page WIP save queue per cloud CASE. Manual and automatic callers
@@ -313,6 +313,7 @@
   }
 
   async function openValidatedBundleIntoApplication({ caseData, xray, fileName, exporterBuild, confirmMessage, confirmBeforeOpen = true, shouldInstall = null, cloudCaseId = null }) {
+    const detail=(label,started)=>global.ModeSwitchTiming?.detail(label,performance.now()-started);
     const buildBundle = global.CaseFileService?.archive?.buildBundle;
     if (typeof buildBundle !== 'function' || typeof global.CaseFileService?.openCase !== 'function') {
       throw fail('CaseFileService archive/open APIs are unavailable.');
@@ -324,7 +325,9 @@
       installCaseData.metadata = installCaseData.metadata && typeof installCaseData.metadata === 'object' ? installCaseData.metadata : {};
       installCaseData.metadata.cloud_case_id = String(cloudCaseId);
     }
+    let phaseStarted=performance.now();
     const built = await buildBundle(installCaseData, xray, exporterBuild);
+    detail('WIP install · build validated portable bundle',phaseStarted);
     let file;
     try {
       file = new File([built.blob], fileName, { type: 'application/zip', lastModified: Date.now() });
@@ -337,7 +340,9 @@
     }
     // The adapter owns the optional confirmation. Suppress the portable ZIP
     // importer's second confirmation for this already-validated programmatic path.
+    phaseStarted=performance.now();
     const opened = await global.CaseFileService.openCase(file, { confirmBeforeOpen: false });
+    detail('WIP install · validated CaseFileService import transaction',phaseStarted);
     return { opened: opened === true };
   }
 
@@ -629,14 +634,21 @@
   }
 
   async function openWorkingCopyIntoApplication(caseId, { caseName = 'case', confirmBeforeOpen = true, shouldInstall = null } = {}) {
+    const detail=(label,started)=>global.ModeSwitchTiming?.detail(label,performance.now()-started);
     const c = needClient();
     const user = await userOrThrow();
+    let phaseStarted=performance.now();
     const saved = await getWorkingCopy(caseId);
+    detail('WIP install · read cloud WIP metadata',phaseStarted);
     if (!saved) throw fail('This cloud case has no saved working copy yet.', 'WIP_NOT_FOUND');
     requiredCaseGroups(saved.case_data);
     const generationPrefix = `${user.id}/${caseId}/wip/${saved.save_generation_id}/`;
     const xray = {};
-    for (const view of ['AP', 'LAT']) {
+
+    // Validate both AP/LAT descriptors against the same committed generation
+    // before starting either request. Their immutable object paths are
+    // independent, so download + SHA-256 verification can safely run in parallel.
+    const imageSpecs = ['AP', 'LAT'].map(view => {
       const path = view === 'AP' ? saved.ap_storage_path : saved.lat_storage_path;
       const contentType = view === 'AP' ? saved.ap_content_type : saved.lat_content_type;
       const byteLength = view === 'AP' ? saved.ap_byte_length : saved.lat_byte_length;
@@ -650,12 +662,31 @@
           observation.images[0]?.view !== view || !Array.isArray(observation.annotations)) {
         throw fail(`${view}: saved WIP observation identity is invalid.`);
       }
-      xray[view] = {
-        ...(await downloadVerifiedImage({ path, byteLength, sha256, view, contentType })),
-        imageSource: observation.images[0]?.source || 'DICOM',
-        observation
+      return { view, path, contentType, byteLength, sha256, observation };
+    });
+
+    const parallelDownloadStarted = performance.now();
+    const verifiedImages = await Promise.all(imageSpecs.map(async spec => {
+      const imageStarted = performance.now();
+      const verifiedImage = await downloadVerifiedImage({
+        path: spec.path,
+        byteLength: spec.byteLength,
+        sha256: spec.sha256,
+        view: spec.view,
+        contentType: spec.contentType
+      });
+      detail('WIP install · ' + spec.view + ' image download and SHA-256 verification (parallel)', imageStarted);
+      return {
+        view: spec.view,
+        record: {
+          ...verifiedImage,
+          imageSource: spec.observation.images[0]?.source || 'DICOM',
+          observation: spec.observation
+        }
       };
-    }
+    }));
+    detail('WIP install · AP/LAT image downloads and SHA-256 verification (parallel total)', parallelDownloadStarted);
+    for (const item of verifiedImages) xray[item.view] = item.record;
     const opened = await openValidatedBundleIntoApplication({
       caseData: saved.case_data,
       xray,
@@ -820,7 +851,7 @@
     return api;
   }
   const api = Object.freeze({
-    VERSION: 'R1145.8', configure, signIn, restoreSession, getSavedConfig, signOut,
+    VERSION: 'R1145.9', configure, signIn, restoreSession, getSavedConfig, signOut,
     getActiveProjectUrl: activeProjectUrl, readDeletionStatus, readDeletionJobStatus, deleteCloudCase,
     getUser: userOrThrow, createPatient, createCaseRecord,
     createNewCaseFromCurrent, saveCurrentRevision, saveRevision,

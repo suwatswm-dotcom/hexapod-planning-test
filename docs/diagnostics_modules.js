@@ -851,3 +851,344 @@
   });
   [plannerSink, workspaceSink, currentCaseSink].forEach(target => observer.observe(target, { childList: true, characterData: true, subtree: true }));
 })();
+
+/* ------------------------------------------------------------------------- */
+/* R1172.9.7 — PLANNER PERFORMANCE / HIGH-CONTRAST TARGETS & ACTUALS                */
+/* ------------------------------------------------------------------------- */
+(function () {
+  "use strict";
+  const MANAGER = window.DiagnosticsManager;
+  if (!MANAGER || typeof MANAGER.register !== "function") return;
+
+  const METRICS = [
+    ["ap_translation", "AP translation", "mm"],
+    ["ap_angulation", "AP angulation", "°"],
+    ["lat_translation", "LAT translation", "mm"],
+    ["lat_angulation", "LAT angulation", "°"],
+    ["bone_length", "Bone length", "mm"],
+    ["bone_rotation", "Bone rotation", "°"]
+  ];
+
+  function node(tag, className, text) {
+    const item = document.createElement(tag);
+    if (className) item.className = className;
+    if (text !== undefined) item.textContent = text;
+    return item;
+  }
+  function fmt(value, digits = 3) {
+    return Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
+  }
+  function row(host, label, value) {
+    host.appendChild(node("div", "r1146-row", label + "  " + value));
+  }
+  function copyText(text, button) {
+    const done = ok => { button.textContent = ok ? "Copied" : "Copy unavailable"; };
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      navigator.clipboard.writeText(text).then(() => done(true)).catch(() => fallback());
+    } else fallback();
+    function fallback() {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch (_) {}
+      area.remove();
+      done(ok);
+    }
+  }
+  function selectedHealth() {
+    const c = window.currentCase || window.CASE || null;
+    const stages = c?.treatment?.stages || [];
+    const selectedId = c?.treatment?.selected_stage_id;
+    const selected = stages.find(stage => stage && stage.id === selectedId);
+    if (selected?.prescription?.planner_health) return { stage: selected, health: selected.prescription.planner_health };
+    for (let i = stages.length - 1; i >= 0; i--) {
+      const stage = stages[i];
+      if (stage?.prescription?.planner_health) return { stage, health: stage.prescription.planner_health };
+    }
+    return null;
+  }
+  function render(host) {
+    const selected = selectedHealth();
+    if (!selected) {
+      host.appendChild(node("div", "r1146-note", "No committed PlannerHealthV1 snapshot is available. Run a browser planner and commit the resulting treatment plan. Undo restores the previous snapshot with the previous phase prescription."));
+      return;
+    }
+    const { stage, health } = selected;
+    const p = health.performance || {};
+    const c = health.completion || {};
+    const report = [];
+    const add = (label, value) => report.push(label + ": " + value);
+
+    const summary = node("div", "r1146-diagnostic-actions");
+    const copy = node("button", "", "Copy Planner Health Report");
+    copy.type = "button";
+    copy.addEventListener("click", () => copyText(report.join("\n"), copy));
+    summary.appendChild(copy);
+    host.appendChild(summary);
+
+    host.appendChild(node("div", "r1146-note", "CURRENT COMMITTED PHASE · " + (health.phase_name || stage.name || stage.id || "—")));
+    const topRows = [
+      ["Result", health.result || "—"],
+      ["Mode", health.mode || "—"],
+      ["Search strategy", health.search_strategy || "—"],
+      ["Selection strategy", health.selection_strategy || "—"],
+      ["Accepted days", String(health.accepted_days ?? "—")],
+      ["Planner runtime", fmt(p.elapsed_ms, 0) + " ms"],
+      ["FK calls", String(p.fk_calls ?? "—")],
+      ["Candidate evaluations", String(p.candidate_evaluations ?? "—")],
+      ["Feasible candidates", String(p.feasible_candidate_evaluations ?? "—") + " (" + fmt(p.candidate_feasibility_percent, 1) + "%)"],
+      ["Average candidates/day", fmt(p.average_candidates_per_day, 1)],
+      ["Expanded search", String(p.expanded_search_attempts ?? "—") + " triggered / " + String(p.expanded_search_used ?? "—") + " used"],
+      ["Objective switches", String(p.objective_switches ?? "—")],
+      ["Max stagnation T/R", String(p.max_translation_stagnation_days ?? "—") + " / " + String(p.max_rotation_stagnation_days ?? "—") + " days"],
+      ["Max daily movement", fmt(p.max_daily_translation_mm) + " mm / " + fmt(p.max_daily_rotation_degrees) + "°"],
+      ["Final residual", fmt(c.remaining_translation_mm) + " mm / " + fmt(c.remaining_rotation_degrees) + "°"],
+      ["Tolerances", fmt(c.translation_tolerance_mm, 2) + " mm / " + fmt(c.rotation_tolerance_degrees, 2) + "°"],
+      ["Daily limits", fmt(c.daily_translation_limit_mm, 2) + " mm / " + fmt(c.daily_rotation_limit_degrees, 2) + "°"],
+      ["Termination", health.termination_reason || "—"],
+      ["Recorded", health.recorded_at || "—"]
+    ];
+    topRows.forEach(([label, value]) => { row(host, label, value); add(label, value); });
+
+    host.appendChild(node("div", "r1146-note", "CLINICAL TARGETS VS FINAL ACTUALS"));
+    const tableWrap = document.createElement("div");
+    tableWrap.style.cssText = "width:100%;overflow-x:auto;margin-top:5px;border:1px solid #64748b;border-radius:6px;background:#172033;";
+    const table = document.createElement("table");
+    table.style.cssText = "width:100%;min-width:350px;border-collapse:collapse;font-size:12px;line-height:1.45;color:#f8fafc;background:#172033;";
+    const header = document.createElement("tr");
+    ["Metric", "Target", "Actual", "Difference"].forEach(label => {
+      const th = document.createElement("th"); th.textContent = label;
+      th.style.cssText = "text-align:left;padding:7px 5px;border-bottom:2px solid #94a3b8;background:#334155;color:#ffffff;font-weight:800;white-space:nowrap;";
+      header.appendChild(th);
+    });
+    table.appendChild(header);
+    const target = health.target_clinical_metrics || {};
+    const actual = health.actual_clinical_metrics || {};
+    const targetFields = health.target_fields || {};
+    const actualDirections = health.actual_clinical_directions || {};
+    METRICS.forEach(([key, label, unit]) => {
+      const targetValue = Number(target[key]);
+      const actualValue = Number(actual[key]);
+      const targetDirection = targetFields[key]?.direction || "";
+      const actualDirection = actualDirections[key] || "";
+      const targetText = Number.isFinite(targetValue) ? fmt(targetValue) + " " + unit + (targetDirection ? " " + targetDirection : "") : "—";
+      const actualText = Number.isFinite(actualValue) ? fmt(actualValue) + " " + unit + (actualDirection ? " " + actualDirection : "") : "—";
+      const diffText = Number.isFinite(targetValue) && Number.isFinite(actualValue) ? fmt(actualValue - targetValue) + " " + unit : "—";
+      const tr = document.createElement("tr");
+      [label, targetText, actualText, diffText].forEach((value, columnIndex) => {
+        const td = document.createElement("td"); td.textContent = value;
+        const textColor = columnIndex === 0 ? "#e2e8f0" : "#ffffff";
+        td.style.cssText = "padding:7px 5px;border-bottom:1px solid #475569;vertical-align:top;color:" + textColor + " !important;background:" + (tr.rowIndex % 2 ? "#1e293b" : "#172033") + ";font-weight:" + (columnIndex === 0 ? "600" : "700") + ";";
+        tr.appendChild(td);
+      });
+      table.appendChild(tr);
+      add(label + " target", targetText);
+      add(label + " actual", actualText);
+      add(label + " difference", diffText);
+    });
+    tableWrap.appendChild(table);
+    host.appendChild(tableWrap);
+    host.appendChild(node("div", "r1146-note", "Read-only view of the planner snapshot stored with the committed phase prescription. Undo restores the previous snapshot; no planner or CASE data is modified by this panel."));
+  }
+
+  MANAGER.register({
+    id: "planner-performance",
+    title: "PLANNER PERFORMANCE",
+    category: "Engineering",
+    render
+  });
+})();
+
+
+/* ------------------------------------------------------------------------- */
+/* R1172.9.10 — COMPLETE ALL-DAYS SIMULATION FRAME INSPECTOR                           */
+/* ------------------------------------------------------------------------- */
+(function () {
+  "use strict";
+  const MANAGER = window.DiagnosticsManager;
+  if (!MANAGER || typeof MANAGER.register !== "function") return;
+  const config = window.APP_CONFIG && window.APP_CONFIG.diagnostics;
+  if (!config || !config.enabled || !config.captureSimulationContract) return;
+  const errors = [];
+  const MAX_ERRORS = 30;
+  const METRICS = [
+    ["ap_translation", "AP translation", "mm"],
+    ["ap_angulation", "AP angulation", "°"],
+    ["lat_translation", "LAT translation", "mm"],
+    ["lat_angulation", "LAT angulation", "°"],
+    ["bone_length", "Bone length", "mm"],
+    ["bone_rotation", "Bone rotation", "°"]
+  ];
+  function node(tag, className, text) {
+    const el = document.createElement(tag);
+    if (className) el.className = className;
+    if (text !== undefined) el.textContent = text;
+    return el;
+  }
+  function row(host, label, value) {
+    const line = node("div", "r1146-row");
+    line.append(node("span", "", label), node("span", "r1146-value", value == null ? "—" : String(value)));
+    host.appendChild(line);
+  }
+  function fmt(value, digits = 2) {
+    return Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : "—";
+  }
+  function getSnapshot() {
+    try { return window.SimulationDiagnostics?.getSnapshot?.() || null; }
+    catch (_) { return null; }
+  }
+  function jsonBlock(value) {
+    const pre = node("pre", "r1146-note", JSON.stringify(value, null, 2));
+    pre.style.whiteSpace = "pre-wrap";
+    pre.style.overflowWrap = "anywhere";
+    pre.style.maxHeight = "none";
+    pre.style.overflowX = "auto";
+    pre.style.fontSize = "11px";
+    return pre;
+  }
+  function section(host, title, value, provenance) {
+    const details = node("details", "");
+    details.style.margin = "8px 0";
+    const summary = node("summary", "", title);
+    summary.style.cursor = "pointer";
+    summary.style.fontWeight = "700";
+    details.appendChild(summary);
+    if (provenance) details.appendChild(node("div", "r1146-note", provenance));
+    details.appendChild(jsonBlock(value));
+    host.appendChild(details);
+    return details;
+  }
+  function onMessage(event) {
+    const frames = Array.from(document.querySelectorAll("iframe"));
+    if (!frames.some(frame => frame.contentWindow === event.source) || event.origin !== window.location.origin) return;
+    const message = event.data || {};
+    if (message.type === "hexapod-simulation-viewer-error" && message.payload && config.captureRuntimeErrors) {
+      errors.unshift(message.payload);
+      if (errors.length > MAX_ERRORS) errors.length = MAX_ERRORS;
+      MANAGER.refresh?.();
+    }
+  }
+  window.addEventListener("message", onMessage);
+  window.addEventListener("simulation-diagnostics-updated", () => MANAGER.refresh?.());
+
+  function render(host) {
+    const snapshot = getSnapshot();
+    const actions = node("div", "r1146-diagnostic-actions");
+    const capture = node("button", "", snapshot ? "Capture Complete Contract Again" : "Capture Complete SimulationFrameV1");
+    capture.type = "button";
+    capture.addEventListener("click", () => {
+      try {
+        window.SimulationDiagnostics?.captureCurrent?.();
+        MANAGER.refresh?.();
+      } catch (error) {
+        host.appendChild(node("div", "r1146-note", "Capture failed: " + (error.message || String(error))));
+      }
+    });
+    actions.appendChild(capture);
+
+    const copy = node("button", "", "Copy Complete Contract JSON");
+    copy.type = "button";
+    copy.disabled = !snapshot;
+    copy.addEventListener("click", () => {
+      const current = getSnapshot();
+      if (!current?.contractReference) return;
+      const exportObject = {
+        inspectionSchema: "SimulationFrameInspectionV2",
+        capturedAt: current.capturedAt,
+        build: current.build,
+        source: current.source,
+        provenance: current.provenance,
+        contract: current.contractReference
+      };
+      const text = JSON.stringify(exportObject, null, 2);
+      const done = ok => { copy.textContent = ok ? "Copied complete contract" : "Copy unavailable"; };
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => done(true)).catch(fallback);
+      else fallback();
+      function fallback() {
+        const area = document.createElement("textarea"); area.value = text;
+        area.style.position = "fixed"; area.style.opacity = "0"; document.body.appendChild(area);
+        area.select(); let ok = false; try { ok = document.execCommand("copy"); } catch (_) {}
+        area.remove(); done(ok);
+      }
+    });
+    actions.appendChild(copy);
+    host.appendChild(actions);
+
+    if (!snapshot) {
+      host.appendChild(node("div", "r1146-note",
+        "No inspection captured. Open the treatment simulation, then capture once. The inspector will show every day and will not follow animation stepping."));
+    } else {
+      const contract = snapshot.contractReference || {};
+      const days = Array.isArray(contract.days) ? contract.days : [];
+      host.appendChild(node("div", "r1146-note", "COMPLETE CONTRACT CAPTURED · " + (snapshot.capturedAt || "time unavailable")));
+      row(host, "Build", snapshot.build);
+      row(host, "Contract", contract.contract + " v" + contract.version);
+      row(host, "Coordinate convention", JSON.stringify(contract.coordinateSystem || {}));
+      row(host, "Units", contract.units || "—");
+      row(host, "Days / intervals", snapshot.dayCount + " / " + snapshot.totalDays);
+      row(host, "Planner health reference", snapshot.plannerHealth ? "Available (CASE prescription reference)" : "Not attached");
+
+      section(host, "DATA PROVENANCE", snapshot.provenance, "Explains which values are saved in CASE and which are derived for renderer handoff.");
+      section(host, "STATIC MECHANICAL DEFINITION", contract.static || {}, [snapshot.provenance?.static?.ring, snapshot.provenance?.static?.bone, snapshot.provenance?.static?.proximalBoneOrigin].filter(Boolean).join(" "));
+      section(host, "TREATMENT PHASES", contract.treatment?.phases || [], snapshot.provenance?.phases);
+
+      const allDays = node("details", "");
+      allDays.style.margin = "8px 0";
+      const allSummary = node("summary", "", "ALL DAILY FRAMES · " + days.length + " DAYS (expand to inspect)");
+      allSummary.style.cursor = "pointer";
+      allSummary.style.fontWeight = "700";
+      allDays.appendChild(allSummary);
+      allDays.appendChild(node("div", "r1146-note", snapshot.provenance?.days || ""));
+      const dayActions = node("div", "r1146-diagnostic-actions");
+      const expandAll = node("button", "", "Expand all days");
+      expandAll.type = "button";
+      expandAll.addEventListener("click", () => allDays.querySelectorAll("details[data-day]").forEach(item => item.open = true));
+      const collapseAll = node("button", "", "Collapse all days");
+      collapseAll.type = "button";
+      collapseAll.addEventListener("click", () => allDays.querySelectorAll("details[data-day]").forEach(item => item.open = false));
+      dayActions.append(expandAll, collapseAll);
+      allDays.appendChild(dayActions);
+
+      days.forEach((day, index) => {
+        const detail = node("details", "");
+        detail.dataset.day = String(index);
+        detail.style.margin = "6px 0 6px 12px";
+        const label = "Day " + (day.day ?? index) + (day.date ? " · " + day.date : "") + (day.phaseName ? " · " + day.phaseName : "");
+        const summary = node("summary", "", label);
+        summary.style.cursor = "pointer";
+        summary.style.fontWeight = "600";
+        detail.appendChild(summary);
+        // Build the potentially large matrix/strut JSON only when a day is opened.
+        // This keeps the all-days index light even for long treatment schedules.
+        detail.addEventListener("toggle", () => {
+          if (!detail.open || detail.dataset.loaded === "true") return;
+          detail.dataset.loaded = "true";
+          const metrics = day.clinicalMetrics || {};
+          const metricHost = node("div", "");
+          metricHost.appendChild(node("div", "r1146-note", "CLINICAL METRICS · DISPLAYED TO 2 DECIMAL PLACES"));
+          METRICS.forEach(([key, title, unit]) => row(metricHost, title, fmt(metrics[key], 2) + " " + unit + (day.clinicalDirections?.[key] ? " · " + day.clinicalDirections[key] : "")));
+          detail.appendChild(metricHost);
+          section(detail, "POSE MATRICES · RING AND BONE", {
+            proximalRingPose: day.proximalRingPose ?? null,
+            distalRingPose: day.distalRingPose ?? null,
+            proximalBonePose: day.proximalBonePose ?? null,
+            distalBonePose: day.distalBonePose ?? null
+          });
+          section(detail, "SIX STRUTS · ENDPOINTS AND LENGTHS", day.struts || []);
+          section(detail, "COMPLETE DAY FRAME JSON", day);
+        });
+        allDays.appendChild(detail);
+      });
+      host.appendChild(allDays);
+      host.appendChild(node("div", "r1146-note", "The captured contract is read-only and independent of animation stepping. Capture again after replanning or changing the treatment CASE to inspect a newly prepared contract."));
+    }
+    host.appendChild(node("div", "r1146-note", "RECENT VIEWER RUNTIME ERRORS · " + errors.length));
+    if (!errors.length) host.appendChild(node("div", "r1146-note", "No viewer runtime errors captured in this session."));
+    errors.forEach((error, index) => host.appendChild(node("div", "r1146-note", (index + 1) + ". " + (error.message || "Unknown viewer error") + " · " + (error.filename || "") + ":" + (error.line || 0) + " · " + (error.capturedAt || ""))));
+  }
+  MANAGER.register({ id: "simulation-viewer", title: "SIMULATION VIEWER", category: "Engineering", render });
+})();

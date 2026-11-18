@@ -32,8 +32,11 @@ window.setApplicationOperatingMode = async function(mode, options = {}) {
         }
         window.__APP_OPERATING_MODE = "standalone";
         document.body.dataset.operatingMode = "standalone";
+        window.ModeSwitchTiming?.mark("Standalone operating mode selected");
         await recovery.startStandalone();
+        window.ModeSwitchTiming?.mark("Standalone local recovery initialized");
         const result = await recovery.offerStartupRecovery();
+        window.ModeSwitchTiming?.mark("Standalone startup recovery check completed");
         window.__APP_STANDALONE_RECOVERY_RESULT = result;
     } else {
         // Connected, signed-out and resolving states must never run local autosave.

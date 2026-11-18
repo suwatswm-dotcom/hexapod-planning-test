@@ -10,6 +10,90 @@ Purpose:
 - Do not depend on Flask CASE or legacy server JSON save/load routes.
 */
 
+// R1172.8.8 — Mode-switch timing plus guarded in-place VTK workspace reset.
+// Records existing lifecycle timings and permits only a one-shot, identity-checked reuse
+// of the clean AP/LAT state created earlier in the same pending sign-in transition.
+(function installModeSwitchTiming(){
+    if (window.ModeSwitchTiming) return;
+    let activeRun = null;
+    let lastReport = '';
+    let panel = null;
+    const now = () => performance.now();
+    const safe = value => String(value ?? '').replace(/[<>]/g, '');
+    function ensurePanel(){
+        if (panel && panel.isConnected) return panel;
+        panel = document.createElement('details');
+        panel.id = 'r1172ModeSwitchTimingPanel';
+        panel.open = true;
+        panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:2147483000;width:min(440px,calc(100vw - 24px));max-height:42vh;overflow:auto;background:#fff;color:#111827;border:2px solid #475569;border-radius:8px;padding:8px 10px;box-shadow:0 4px 18px rgba(0,0,0,.24);font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;';
+        const summary = document.createElement('summary');
+        summary.style.cssText = 'cursor:pointer;font-weight:700;';
+        summary.textContent = 'R1172.8.8 MODE SWITCH TIMING';
+        const pre = document.createElement('pre');
+        pre.id = 'r1172ModeSwitchTimingOutput';
+        pre.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;';
+        panel.append(summary, pre);
+        (document.body || document.documentElement).appendChild(panel);
+        return panel;
+    }
+    function render(){
+        const node = ensurePanel();
+        const pre = node.querySelector('#r1172ModeSwitchTimingOutput');
+        if (pre) pre.textContent = activeRun ? formatRun(activeRun) : lastReport;
+        const summary = node.querySelector('summary');
+        if (summary) summary.textContent = activeRun
+            ? `R1172.8.8 MODE TIMING · RUNNING · ${activeRun.direction}`
+            : 'R1172.8.8 MODE TIMING · LAST RUN';
+    }
+    function formatRun(run){
+        const total = now() - run.startedAt;
+        const lines = [
+            `DIRECTION: ${run.direction}`,
+            `STATE: ${run.finished ? 'COMPLETE' : 'IN PROGRESS'}`,
+            `ELAPSED: ${(total/1000).toFixed(3)} s`,
+            '',
+            'STEP TIMES (each step; cumulative from start):'
+        ];
+        for (const item of run.marks){
+            lines.push(`${(item.stepMs/1000).toFixed(3)} s  |  ${(item.elapsedMs/1000).toFixed(3)} s total  |  ${item.label}`);
+        }
+        if (run.details.length) {
+            lines.push('', 'SUBPHASE TIMINGS (nested measurements; do not add to step totals):');
+            for (const item of run.details) lines.push(`${(item.durationMs/1000).toFixed(3)} s  |  ${item.label}`);
+        }
+        return lines.join('\n');
+    }
+    window.ModeSwitchTiming = {
+        begin(direction){
+            activeRun = { direction:safe(direction), startedAt:now(), previousAt:now(), marks:[], details:[], finished:false };
+            render();
+        },
+        mark(label){
+            if (!activeRun || activeRun.finished) return;
+            const at = now();
+            activeRun.marks.push({ label:safe(label), stepMs:at-activeRun.previousAt, elapsedMs:at-activeRun.startedAt });
+            activeRun.previousAt = at;
+            render();
+        },
+        detail(label, durationMs){
+            if (!activeRun || activeRun.finished || !Number.isFinite(Number(durationMs))) return;
+            activeRun.details.push({ label:safe(label), durationMs:Math.max(0, Number(durationMs)) });
+            render();
+        },
+        finish(label){
+            if (!activeRun || activeRun.finished) return;
+            this.mark(label || 'Transition complete');
+            activeRun.finished = true;
+            lastReport = formatRun(activeRun);
+            render();
+            console.info('[R1172.8.8 mode switch timing]\n' + lastReport);
+            activeRun = null;
+        },
+        isActive(direction){ return !!activeRun && (!direction || activeRun.direction === direction); },
+        getLastReport(){ return lastReport; }
+    };
+})();
+
 // R853 compatibility repair (retained in R854): some saved CASE files may lack the patient
 // object even though the current Patient workspace expects it. Preserve every
 // existing patient value and add only missing fields; never replace the CASE.
@@ -279,15 +363,49 @@ async function initializePatientWorkspace(){
     await refreshDeveloperDashboard();
 }
 
+// R1172.8.8 — a successful mode-boundary reset can be reused once by the
+// immediately-following automatic cloud restore. The proof is deliberately
+// narrow: it is valid only during the same pending mode transition, while the
+// CASE object and both iframe documents remain identical. Otherwise the full
+// AP/LAT clear path runs as before.
+window.__R1172_MODE_BOUNDARY_XRAY_PROOF = null;
+window.__recordR1172ModeBoundaryXrayProof = function(){
+    const apFrame = document.getElementById('xrayAPVtkFrame');
+    const latFrame = document.getElementById('xrayLATVtkFrame');
+    const proof = {
+        transitionPending: window.__APP_MODE_TRANSITION_PENDING === true,
+        caseRef: window.currentCase,
+        apDocument: apFrame?.contentDocument || null,
+        latDocument: latFrame?.contentDocument || null
+    };
+    window.__R1172_MODE_BOUNDARY_XRAY_PROOF =
+        proof.transitionPending && proof.caseRef && proof.apDocument && proof.latDocument ? proof : null;
+    return !!window.__R1172_MODE_BOUNDARY_XRAY_PROOF;
+};
+window.__consumeR1172ModeBoundaryXrayProof = function(){
+    const proof = window.__R1172_MODE_BOUNDARY_XRAY_PROOF;
+    window.__R1172_MODE_BOUNDARY_XRAY_PROOF = null;
+    if (!proof || !proof.transitionPending || window.__APP_MODE_TRANSITION_PENDING !== true ||
+        window.__APP_OPERATING_MODE !== 'connected' || window.currentCase !== proof.caseRef) return false;
+    const apFrame = document.getElementById('xrayAPVtkFrame');
+    const latFrame = document.getElementById('xrayLATVtkFrame');
+    return !!(apFrame?.contentDocument && latFrame?.contentDocument &&
+        apFrame.contentDocument === proof.apDocument && latFrame.contentDocument === proof.latDocument);
+};
+
 // R1143 — clean CASE/AP/LAT boundary when switching between Connected and Standalone.
 // The destination may restore only its own saved record after this clean context is installed.
 window.resetActiveCaseForModeSwitch = async function(reason){
+    window.__R1172_MODE_BOUNDARY_XRAY_PROOF = null;
+    const detail = (label, started) => window.ModeSwitchTiming?.detail(label, performance.now() - started);
     const transition = typeof window.beginCaseTransition === 'function'
         ? window.beginCaseTransition('R1145.2 operating-mode boundary: ' + String(reason || 'mode switch'))
         : null;
     let committed = false;
     try {
+        let phaseStarted = performance.now();
         const fresh = typeof r914BuildDefaultCase === 'function' ? r914BuildDefaultCase(null) : null;
+        detail('Mode boundary · build default CASE', phaseStarted);
         if (!fresh) throw new Error('Default CASE builder is unavailable.');
         fresh.frame.hardware = 'Hexapod';
         fresh.metadata.case_name = 'New Case';
@@ -295,32 +413,42 @@ window.resetActiveCaseForModeSwitch = async function(reason){
         if (!window.WorkspaceManager || typeof window.WorkspaceManager.ensureInitialized !== 'function') {
             throw new Error('WorkspaceManager.ensureInitialized("xray") is unavailable.');
         }
+        phaseStarted = performance.now();
         await window.WorkspaceManager.ensureInitialized('xray');
+        detail('Mode boundary · ensure X-ray workspace', phaseStarted);
         if (typeof window.clearActiveXrayWorkspaces !== 'function') {
             throw new Error('Verified AP/LAT clear helper is unavailable.');
         }
-        const cleared = await window.clearActiveXrayWorkspaces();
+        phaseStarted = performance.now();
+        // Only the Connected/Standalone boundary opts into the guarded
+        // in-place EMPTY live-state reset. New Case and manual cloud-case
+        // changes retain the existing full iframe reload behavior.
+        const cleared = await window.clearActiveXrayWorkspaces({ preferInPlace: true });
+        detail('Mode boundary · clear AP/LAT workspaces (' + (cleared?.resetStrategy || 'unknown strategy') + ')', phaseStarted);
         if (cleared?.status !== 'PASS') {
             throw new Error(cleared?.message || 'AP/LAT workspaces could not be cleared.');
         }
 
         window.currentCase = fresh;
         if (typeof syncCurrentCase !== 'function') throw new Error('syncCurrentCase() is unavailable.');
+        phaseStarted = performance.now();
         await syncCurrentCase();
+        detail('Mode boundary · sync clean CASE', phaseStarted);
         if (!window.currentCase?.metadata || !window.currentCase?.parameters || window.currentCase.debug_sync?.success !== true) {
             throw new Error(window.currentCase?.debug_sync?.error || 'Browser did not validate the clean CASE.');
         }
         const canonical = JSON.parse(JSON.stringify(window.currentCase));
         window.currentCase = canonical;
         if (typeof window.r916ResetXrayCaseDiagnostics === 'function') window.r916ResetXrayCaseDiagnostics();
-        if (typeof populatePatient === 'function') await populatePatient();
-        if (typeof updateCurrentCaseInspector === 'function') updateCurrentCaseInspector({ resetScroll: true });
+        if (typeof populatePatient === 'function') { phaseStarted = performance.now(); await populatePatient(); detail('Mode boundary · refresh Patient workspace', phaseStarted); }
+        if (typeof updateCurrentCaseInspector === 'function') { phaseStarted = performance.now(); updateCurrentCaseInspector({ resetScroll: true }); detail('Mode boundary · update CASE inspector', phaseStarted); }
         const shellName = document.getElementById('shellCaseName');
         if (shellName) shellName.value = canonical.metadata.case_name || '';
         window.lastUndoTransaction = null;
         if (typeof updateUndoButton === 'function') updateUndoButton();
         committed = true;
-        return { status: 'PASS', caseName: canonical.metadata.case_name || 'New Case', xrayCleared: true };
+        window.__recordR1172ModeBoundaryXrayProof?.();
+        return { status: 'PASS', caseName: canonical.metadata.case_name || 'New Case', xrayCleared: true, xrayResetStrategy: cleared.resetStrategy || 'full-iframe-reload' };
     } finally {
         if (transition && typeof window.endCaseTransition === 'function') {
             window.endCaseTransition(transition, { committed, reason: 'R1145.3 clean operating-mode context installed' });
@@ -401,18 +529,25 @@ function initializeOperatingModeControls(){
         if(button.disabled || window.__APP_STARTUP_STATE!=='ready' || window.__APP_MODE_TRANSITION_PENDING) return;
         button.disabled=true;
         window.__APP_MODE_TRANSITION_PENDING=true;
+        window.ModeSwitchTiming?.begin('Connected → Standalone');
         update();
         say('SWITCHING TO STANDALONE · Signing out of Supabase, clearing the active CASE and AP/LAT, then checking the local recovery snapshot…');
         try{
             if(window.__APP_OPERATING_MODE==='connected'){
                 if(!window.SupabaseCaseStorage || typeof window.SupabaseCaseStorage.signOut!=='function') throw new Error('Supabase sign-out API is unavailable.');
                 await window.SupabaseCaseStorage.signOut();
+                window.ModeSwitchTiming?.mark('Supabase sign-out completed');
+            } else {
+                window.ModeSwitchTiming?.mark('Supabase sign-out skipped (already signed out)');
             }
             if(typeof window.setApplicationOperatingMode!=='function') throw new Error('Operating-mode controller is unavailable.');
             await window.setApplicationOperatingMode('signed-out',{source:'r1143-before-standalone'});
+            window.ModeSwitchTiming?.mark('Connected recovery stopped; signed-out mode set');
             if(typeof window.resetActiveCaseForModeSwitch!=='function') throw new Error('Clean CASE/AP/LAT reset is unavailable.');
             await window.resetActiveCaseForModeSwitch('Connected/Signed-out to Standalone');
+            window.ModeSwitchTiming?.mark('Active CASE and AP/LAT cleared');
             await window.setApplicationOperatingMode('standalone',{explicit:true,source:'patient-page-user-choice'});
+            window.ModeSwitchTiming?.mark('Standalone recovery and startup check completed');
             if(showStandalone)showStandalone.checked=false;
             if(showConnected)showConnected.checked=false;
             say('STANDALONE MODE ACTIVE · Clean CASE installed; only the local IndexedDB snapshot was considered.');
@@ -421,6 +556,7 @@ function initializeOperatingModeControls(){
         }finally{
             window.__APP_MODE_TRANSITION_PENDING=false;
             update();
+            window.ModeSwitchTiming?.finish('Standalone mode UI ready');
         }
     });
     window.addEventListener('application-operating-mode-changed',update);
@@ -755,24 +891,42 @@ function initializeSupabaseCaseStorageControls(){
         }
     }
     async function installCleanCloudCaseContext(row, stillCurrent=()=>true){
+        const detail=(label,started)=>window.ModeSwitchTiming?.detail(label,performance.now()-started);
+        let phaseStarted=performance.now();
         const fresh=typeof r914BuildDefaultCase==='function'?r914BuildDefaultCase(null):null;
+        detail('Cloud context · build target CASE',phaseStarted);
         if(!fresh)throw new Error('Clean CASE initializer is unavailable; refusing to carry the previous case forward.');
         fresh.metadata.case_name=row.case_name;
         fresh.metadata.cloud_case_id=row.id;
         fresh.frame.hardware='Hexapod';
         fresh.patient.patient_name=row.patient_name||'enter name';
-        if(!window.WorkspaceManager || typeof window.WorkspaceManager.ensureInitialized!=='function')throw new Error('WorkspaceManager.ensureInitialized("xray") is unavailable.');
-        await window.WorkspaceManager.ensureInitialized('xray');
-        if(typeof window.clearActiveXrayWorkspaces!=='function')throw new Error('Verified AP/LAT clear helper is unavailable.');
-        const cleared=await window.clearActiveXrayWorkspaces();
-        if(cleared?.status!=='PASS')throw new Error(cleared?.message||'AP/LAT workspaces could not be cleared.');
+        if(!stillCurrent())return {stale:true};
+
+        phaseStarted=performance.now();
+        const reusedBoundary=window.__consumeR1172ModeBoundaryXrayProof?.()===true;
+        detail('Cloud context · validate/reuse mode-boundary clean AP/LAT state',phaseStarted);
+        if(reusedBoundary){
+            window.ModeSwitchTiming?.detail('Cloud context · second AP/LAT iframe clear safely skipped (same verified clean documents)',0);
+        }else{
+            if(!window.WorkspaceManager || typeof window.WorkspaceManager.ensureInitialized!=='function')throw new Error('WorkspaceManager.ensureInitialized("xray") is unavailable.');
+            phaseStarted=performance.now();
+            await window.WorkspaceManager.ensureInitialized('xray');
+            detail('Cloud context · ensure X-ray workspace',phaseStarted);
+            if(typeof window.clearActiveXrayWorkspaces!=='function')throw new Error('Verified AP/LAT clear helper is unavailable.');
+            phaseStarted=performance.now();
+            const cleared=await window.clearActiveXrayWorkspaces();
+            detail('Cloud context · full AP/LAT clear fallback',phaseStarted);
+            if(cleared?.status!=='PASS')throw new Error(cleared?.message||'AP/LAT workspaces could not be cleared.');
+        }
         if(!stillCurrent())return {stale:true};
         window.currentCase=fresh;
         if(typeof syncCurrentCase!=='function')throw new Error('syncCurrentCase() is unavailable.');
+        phaseStarted=performance.now();
         await syncCurrentCase();
-        if(typeof populatePatient==='function')await populatePatient();
-        if(typeof updateCurrentCaseInspector==='function')updateCurrentCaseInspector({resetScroll:true});
-        return {installed:true};
+        detail('Cloud context · sync target CASE',phaseStarted);
+        if(typeof populatePatient==='function'){phaseStarted=performance.now();await populatePatient();detail('Cloud context · refresh Patient workspace',phaseStarted);}
+        if(typeof updateCurrentCaseInspector==='function'){phaseStarted=performance.now();updateCurrentCaseInspector({resetScroll:true});detail('Cloud context · update CASE inspector',phaseStarted);}
+        return {installed:true,reusedVerifiedXrayBoundary:reusedBoundary};
     }
     async function openSelectedCloudCase(row, generation){
         await deactivateConnectedAutosave('cloud case switch in progress');
@@ -863,8 +1017,14 @@ function initializeSupabaseCaseStorageControls(){
         if(!row){setStatus('SELECT A CASE · Choose a saved cloud case first.');return;}
         if(!revisionId){setStatus('SELECT A REVISION · Choose a revision from the history list.');return;}
         const button=$('supabaseOpenRevisionButton');button.disabled=true;
-        const autosavePause=await connectedAutosave()?.suspend('manual immutable revision restore');
+        let autosaveDrainAttempted=false;
         try{
+            // R1172.8.1: pause through the autosave controller's actual public API.
+            // Keep this inside try so any failure still reaches finally and unlocks the button.
+            if(connectedAutosave()){
+                autosaveDrainAttempted=true;
+                await deactivateConnectedAutosave('manual immutable revision restore');
+            }
             setStatus('OPENING REVISION · Downloading assets and verifying byte lengths/SHA-256…');
             const result=await api().openCaseIntoApplication(row.id,{revisionId,confirmBeforeOpen:true});
             if(result.cancelled){setStatus('OPEN CANCELLED · Active case was not replaced.');return;}
@@ -872,7 +1032,11 @@ function initializeSupabaseCaseStorageControls(){
             setStatus(`OPEN PASS · ${result.caseName} · revision R${result.revisionNumber} restored through the existing validated case-import path.`);
         }catch(error){setStatus('OPEN REVISION FAILED · '+(error?.message||error));}
         finally{
-            if(autosavePause) connectedAutosave()?.resume(autosavePause,'revision restore completed or cancelled');
+            // Re-arm only through the existing identity-checked helper. It will refuse
+            // activation if mode/case identity no longer matches.
+            if(autosaveDrainAttempted && window.__APP_OPERATING_MODE==='connected'){
+                activateConnectedAutosave(row.id,row.case_name);
+            }
             button.disabled=false;
         }
     });
@@ -882,24 +1046,34 @@ function initializeSupabaseCaseStorageControls(){
         let authenticated=false;
         let connectedModeSet=false;
         const priorMode=window.__APP_OPERATING_MODE;
+        window.ModeSwitchTiming?.begin(priorMode==='standalone' ? 'Standalone → Connected' : 'Sign-in → Connected');
         window.dispatchEvent(new Event('application-operating-mode-changed'));
         try{
             if(priorMode==='standalone'){
                 setStatus('LEAVING STANDALONE · Stopping local recovery and clearing the local CASE/AP/LAT before cloud sign-in…');
                 await window.setApplicationOperatingMode('signed-out',{source:'r1143-before-connected-sign-in'});
+                window.ModeSwitchTiming?.mark('Standalone recovery stopped; signed-out mode set');
                 await window.resetActiveCaseForModeSwitch('Standalone to Connected');
+                window.ModeSwitchTiming?.mark('Local CASE and AP/LAT cleared');
             }else if(priorMode==='connected'){
                 setStatus('CONNECTED MODE · Refreshing the authenticated cloud session…');
             }else{
                 await window.setApplicationOperatingMode('signed-out',{source:'r1143-sign-in-boundary'});
-                if(typeof window.resetActiveCaseForModeSwitch==='function') await window.resetActiveCaseForModeSwitch('Signed-out to Connected');
+                window.ModeSwitchTiming?.mark('Signed-out mode boundary completed');
+                if(typeof window.resetActiveCaseForModeSwitch==='function') {
+                    await window.resetActiveCaseForModeSwitch('Signed-out to Connected');
+                    window.ModeSwitchTiming?.mark('Active CASE and AP/LAT cleared');
+                }
             }
             const targetUrl=String($('supabaseProjectUrl').value||'').trim();
             setStatus('SIGNING IN · Connecting to the configured Supabase project…');
+            window.ModeSwitchTiming?.mark('Supabase authentication started');
             const result=await api().signIn({url:targetUrl,publishableKey:$('supabasePublishableKey').value,email:$('supabaseEmail').value,password:$('supabasePassword').value});
             authenticated=true;
+            window.ModeSwitchTiming?.mark('Supabase sign-in completed');
             if (typeof window.setApplicationOperatingMode === 'function') {
                 await window.setApplicationOperatingMode('connected', { authenticated:true, source:'interactive-sign-in' });
+                window.ModeSwitchTiming?.mark('Connected operating mode activated');
             }
             connectedModeSet=true;
             if(result.user?.email && $('supabaseEmail'))$('supabaseEmail').value=result.user.email;
@@ -907,8 +1081,14 @@ function initializeSupabaseCaseStorageControls(){
             if($('supabasePassword'))$('supabasePassword').value='';
             setStatus(`SIGNED IN · User ${result.user.id}. Refreshing cloud list…`);
             await refreshList();
+            window.ModeSwitchTiming?.mark('Cloud case list refreshed');
             const selected=selectedRow();
-            if(selected) await refreshRevisionHistory(selected.id);
+            if(selected) {
+                await refreshRevisionHistory(selected.id);
+                window.ModeSwitchTiming?.mark('Selected case revision history refreshed');
+            } else {
+                window.ModeSwitchTiming?.mark('No previously selected cloud case');
+            }
             if(typeof updateDeleteGate==='function') updateDeleteGate();
 
             // R1135: signing in after the SPA has already started is also a
@@ -954,7 +1134,12 @@ function initializeSupabaseCaseStorageControls(){
                 setStatus('SIGN-IN FAILED · '+(error?.message||error)+' · Local recovery remains stopped; retry sign-in or explicitly enter Standalone Mode.');
             }
         }
-        finally{window.__APP_MODE_TRANSITION_PENDING = false;button.disabled=false;window.dispatchEvent(new Event('application-operating-mode-changed'));}
+        finally{
+            window.__APP_MODE_TRANSITION_PENDING = false;
+            button.disabled=false;
+            window.dispatchEvent(new Event('application-operating-mode-changed'));
+            window.ModeSwitchTiming?.finish('Sign In button re-enabled');
+        }
     });
     $('supabaseSignOutButton')?.addEventListener('click',async()=>{
         try{
@@ -1017,8 +1202,14 @@ function initializeSupabaseCaseStorageControls(){
         const row=selectedRow();
         if(!row){setStatus('SELECT A CASE · Choose a saved cloud case first.');return;}
         const button=$('supabaseOpenWipButton');button.disabled=true;
-        const autosavePause=await connectedAutosave()?.suspend('manual WIP restore');
+        let autosaveDrainAttempted=false;
         try{
+            // Same lifecycle fix as immutable revision restore: use the real API and
+            // guarantee button recovery if draining or importing fails.
+            if(connectedAutosave()){
+                autosaveDrainAttempted=true;
+                await deactivateConnectedAutosave('manual WIP restore');
+            }
             setStatus('RESTORING WIP · Reading the mutable working copy and verifying AP/LAT image byte lengths and SHA-256…');
             const result=await api().openWorkingCopyIntoApplication(row.id,{caseName:row.case_name,confirmBeforeOpen:true});
             if(result.cancelled){setStatus('WIP RESTORE CANCELLED · Active CASE was not replaced.');return;}
@@ -1026,7 +1217,9 @@ function initializeSupabaseCaseStorageControls(){
             setStatus(`WIP RESTORE PASS · ${result.caseName} · working-copy version ${result.workingCopyVersion} restored through the existing validated case-import path.`);
         }catch(error){setStatus('WIP RESTORE FAILED · '+(error?.message||error));}
         finally{
-            if(autosavePause) connectedAutosave()?.resume(autosavePause,'WIP restore completed or cancelled');
+            if(autosaveDrainAttempted && window.__APP_OPERATING_MODE==='connected'){
+                activateConnectedAutosave(row.id,row.case_name);
+            }
             button.disabled=false;
         }
     });
@@ -1208,7 +1401,9 @@ function initializeSupabaseCaseStorageControls(){
     // case. It never guesses from a case name or chooses the most recently modified case.
     // A connected session with no selected case/WIP does NOT fall back to local restore.
     window.restoreSupabaseWorkingCopyAtStartup=async function(connectionState){
+        window.ModeSwitchTiming?.mark('Cloud WIP recovery started');
         await deactivateConnectedAutosave('startup cloud restore in progress');
+        window.ModeSwitchTiming?.mark('Connected autosave drained/deactivated');
         const connection=connectionState||await sessionRestorePromise;
         if(!connection?.connected) return {mode:'local',restored:false,reason:'not-connected'};
         const caseId=String(connection.selectedCaseId||'').trim();
@@ -1223,8 +1418,10 @@ function initializeSupabaseCaseStorageControls(){
                 ()=>{try{return localStorage.getItem(SELECTED_CASE_KEY)===caseId;}catch(_){return false;}}
             );
             if(cleanContext?.stale)throw new Error('Selected cloud case changed before startup context installation.');
+            window.ModeSwitchTiming?.mark('Clean cloud CASE/AP/LAT context installed');
             setStatus('AUTOMATIC WIP RECOVERY · Previous active CASE/AP/LAT content cleared. Checking the selected cloud case…');
             const wipLookup=await readWorkingCopyForSelectedProject(caseId);
+            window.ModeSwitchTiming?.mark('Selected cloud WIP lookup completed');
             const saved=wipLookup.workingCopy;
             const caseName=connection.selectedCaseName||saved?.case_data?.metadata?.case_name||'Selected cloud case';
             if(!saved){
@@ -1235,6 +1432,7 @@ function initializeSupabaseCaseStorageControls(){
                         shouldInstall:()=>{try{return localStorage.getItem(SELECTED_CASE_KEY)===caseId;}catch(_){return false;}}
                     });
                     if(result?.stale || !result?.opened)throw new Error('The selected case current revision was not installed.');
+                    window.ModeSwitchTiming?.mark('Immutable cloud revision installed (no WIP existed)');
                     setStatus(wipLookup.schemaAvailable
                         ? `AUTO CASE OPEN PASS · ${caseName} · no WIP existed; current immutable revision R${result.revisionNumber} loaded with AP/LAT images and annotations.`
                         : `AUTO CASE OPEN PASS · ${caseName} · this Supabase project has no WIP table yet; current immutable revision R${result.revisionNumber} loaded as the baseline.`);
@@ -1252,8 +1450,11 @@ function initializeSupabaseCaseStorageControls(){
                 confirmBeforeOpen:false
             });
             if(!result?.opened) throw new Error('The existing validated case-import path did not confirm a complete WIP restore.');
+            window.ModeSwitchTiming?.mark('Cloud WIP payload installed into the application');
             setStatus(`AUTO WIP RESTORE PASS · ${caseName} · working-copy version ${result.workingCopyVersion} restored through the existing validated case-import path.`);
+            window.ModeSwitchTiming?.mark('AUTO WIP RESTORE PASS status displayed');
             activateConnectedAutosave(caseId,caseName);
+            window.ModeSwitchTiming?.mark('Connected autosave reactivated');
             return {
                 mode:'supabase',restored:true,caseId,
                 workingCopyVersion:result.workingCopyVersion,

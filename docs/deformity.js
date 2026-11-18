@@ -2,12 +2,7 @@ function initializeDeformityWorkspace(){
 
     populateDeformity();
     initializeWorkflowButtons();
-
-    document.getElementById("loc_enabled").onchange=function(){
-    document.getElementById("locSection").style.display=this.checked?"block":"none";
-    };
-    
-    // detect .onchange, .onblur and commit change
+// detect .onchange, .onblur and commit change
     bindWorkspaceInputs(commitDeformity, "workspace_deformity");
 
     document.getElementById(
@@ -49,7 +44,7 @@ if (window.WorkspaceManager) {
 }
 
 // Temporary compatibility while MPA still exists.
-if (!window.WorkspaceManager) {
+if (window.location.pathname !== "/app") {
     window.onload = initializeDeformityWorkspace;
 }
 

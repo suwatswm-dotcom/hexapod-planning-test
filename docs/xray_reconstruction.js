@@ -1005,20 +1005,24 @@ async function r899VerifyRollbackRecord(view, expected, panel){
     return {view,annotations:actual.observation.annotations?.length??null,imageBytes:actualBytes?.length||0,persisted:false};
 }
 
-// R1123 — transactionally reset AP/LAT live workspaces for New Case.
-// Checkpoints, reset, and rollback are live-memory operations only; this path
-// does not call per-view persistence or compatibility APIs.
-window.clearActiveXrayWorkspaces = async function(){
+// R1172.8.8 — transactionally reset AP/LAT live workspaces. Mode switches may
+// request the guarded in-place EMPTY-record path; all other callers retain the
+// full iframe reload. Checkpoints, reset and rollback remain live-memory-only.
+window.clearActiveXrayWorkspaces = async function(options = {}){
+    const preferInPlace = options?.preferInPlace === true;
     const views = ["AP", "LAT"];
     const panels = {};
     const checkpoints = {};
     const frames = {};
     const reloaded = new Set();
+    let inPlaceError = null;
+    const timingDetail = (label, started) => window.ModeSwitchTiming?.detail(label, performance.now() - started);
 
     const reloadPanel = async view => {
         const frame = document.getElementById(view === "LAT" ? "xrayLATVtkFrame" : "xrayAPVtkFrame");
         if (!frame) throw new Error(view + " iframe is unavailable.");
         frames[view] = frame;
+        let phaseStarted = performance.now();
         await new Promise((resolve, reject) => {
             const timer = setTimeout(() => {
                 frame.removeEventListener("load", onLoad);
@@ -1032,13 +1036,17 @@ window.clearActiveXrayWorkspaces = async function(){
             frame.addEventListener("load", onLoad, { once: true });
             frame.contentWindow.location.reload();
         });
+        timingDetail(view + ' · iframe reload/load event', phaseStarted);
         reloaded.add(view);
         // Reacquire the NEW iframe Window and initialize its lazy VTK controller.
+        phaseStarted = performance.now();
         panels[view] = await ensureXrayLivePanel(view);
+        timingDetail(view + ' · VTK live controller initialization', phaseStarted);
         return panels[view];
     };
 
     const verifyEmptyLivePanel = async view => {
+        const verifyStarted = performance.now();
         const panel = panels[view] || await ensureXrayLivePanel(view);
         const live = await panel.captureXrayLiveRollbackCheckpoint();
         const annotations = live?.observation?.annotations;
@@ -1051,8 +1059,45 @@ window.clearActiveXrayWorkspaces = async function(){
         if (live.imageBytes?.byteLength) {
             throw new Error(view + " unexpectedly retains external image bytes after New Case reset.");
         }
-        return { view, annotations: 0, image: "intentionally empty", persisted: false };
+        // R1172.8.8: an in-place reset must prove that the image is hidden and
+        // that the retained VTK ImageData contains only the canonical zero buffer.
+        const empty = live.syntheticImage;
+        if (empty?.sliceVisible !== false || empty?.dicomMeta?.loaded === true) {
+            throw new Error(view + " still exposes a loaded image or DICOM state after reset.");
+        }
+        if (JSON.stringify(empty?.dimensions) !== JSON.stringify([500, 500, 1]) ||
+            JSON.stringify(empty?.spacing) !== JSON.stringify([1, 1, 1]) ||
+            JSON.stringify(empty?.origin) !== JSON.stringify([0, 0, 0])) {
+            throw new Error(view + " empty ImageData geometry does not match the canonical clinical startup state.");
+        }
+        const values = empty?.values;
+        if (!values || values.length !== 500 * 500 || !values.every(value => value === 0)) {
+            throw new Error(view + " retained image pixels instead of the canonical zero-filled buffer.");
+        }
+        timingDetail(view + ' · verify empty live panel (capture/readback)', verifyStarted);
+        return { view, annotations: 0, image: "intentionally empty", pixels: "zero-filled", persisted: false };
     };
+
+    const buildEmptyLiveRecord = view => ({
+        schemaVersion: "xray-live-state-v1",
+        observation: {
+            version: "xray-observation-v2",
+            images: [{ id: `synthetic-image-${view}`, view, source: "empty" }],
+            annotations: [],
+            provenance: {
+                producer: "R1172.8.8 mode-boundary reset",
+                renderer: "vtk.js",
+                contract: "renderer-neutral-semantic-v2"
+            }
+        },
+        imageFileBytes: null,
+        imageByteLength: 0,
+        imageChecksumAlgorithm: null,
+        imageChecksum: null,
+        imageIdentityStatus: "EMPTY_NO_IMAGE",
+        imageSource: "EMPTY",
+        imageView: view
+    });
 
     const verifyCheckpoint = async (view, expected, actual) => {
         if (!actual || actual.schemaVersion !== "xray-live-rollback-v1" || actual.view !== view) {
@@ -1098,14 +1143,20 @@ window.clearActiveXrayWorkspaces = async function(){
         if (!window.WorkspaceManager || typeof window.WorkspaceManager.ensureInitialized !== "function") {
             throw new Error("R1123 — WorkspaceManager.ensureInitialized('xray') is unavailable.");
         }
+        let phaseStarted = performance.now();
         await window.WorkspaceManager.ensureInitialized("xray");
+        timingDetail('Clear helper · ensure X-ray workspace', phaseStarted);
 
         // Prepare and capture BOTH live panels before changing either one.
         // No per-view persistence APIs or IndexedDB operations are used here.
         for (const view of views) {
+            phaseStarted = performance.now();
             const panel = await ensureXrayLivePanel(view);
+            timingDetail(view + ' · acquire live VTK controller', phaseStarted);
             panels[view] = panel;
+            phaseStarted = performance.now();
             const checkpoint = await panel.captureXrayLiveRollbackCheckpoint();
+            timingDetail(view + ' · capture rollback checkpoint (including image identity)', phaseStarted);
             if (checkpoint?.schemaVersion !== "xray-live-rollback-v1" ||
                 checkpoint.view !== view || !checkpoint.observation) {
                 throw new Error(view + " did not provide a valid live rollback checkpoint.");
@@ -1121,8 +1172,49 @@ window.clearActiveXrayWorkspaces = async function(){
             checkpoints[view] = checkpoint;
         }
 
-        // A freshly loaded clinical VTK iframe is the established empty-panel state.
-        // Reload only after both live checkpoints have been captured.
+        // R1172.8.8: mode boundaries may reuse the already-initialized VTK
+        // controller. The iframe's existing installXrayLiveRecord API has a
+        // strict EMPTY-record branch which removes native widgets, semantic
+        // annotations/overlays, external image bytes and DICOM state, then
+        // installs the canonical hidden zero-filled clinical image. This keeps
+        // the same iframe/VTK controller alive; it does not bypass VTK APIs.
+        if (preferInPlace) {
+            const inPlaceStarted = performance.now();
+            try {
+                for (const view of views) {
+                    const panel = panels[view];
+                    if (typeof panel?.installXrayLiveRecord !== "function") {
+                        throw new Error(view + " panel does not expose installXrayLiveRecord(); using full reload fallback.");
+                    }
+                    const installStarted = performance.now();
+                    const result = await panel.installXrayLiveRecord(buildEmptyLiveRecord(view));
+                    timingDetail(view + ' · in-place EMPTY live-state install', installStarted);
+                    if (result?.status !== "PASS" || result.view !== view ||
+                        result.annotationCount !== 0 || result.imageBytes !== 0 ||
+                        result.persisted !== false || result.storage !== "live-memory-only") {
+                        throw new Error(view + " in-place EMPTY install did not return the required memory-only PASS result.");
+                    }
+                }
+                const verified = {};
+                for (const view of views) verified[view] = await verifyEmptyLivePanel(view);
+                timingDetail('Clear helper · in-place AP/LAT reset accepted', inPlaceStarted);
+                return {
+                    status: "PASS",
+                    cleared: views.slice(),
+                    storage: "live-memory-only",
+                    resetStrategy: "in-place-empty-live-state",
+                    rollbackCheckpoints: "captured in memory",
+                    verified
+                };
+            } catch (error) {
+                inPlaceError = error;
+                window.ModeSwitchTiming?.detail('In-place reset rejected; full iframe reload fallback · ' + (error?.message || String(error)), 0);
+            }
+        }
+
+        // Full iframe reload remains the established fallback and the default
+        // for New Case/manual cloud-case operations. It also remains available
+        // whenever the in-place reset or its readback verification fails.
         for (const view of views) await reloadPanel(view);
 
         const verified = {};
@@ -1132,10 +1224,15 @@ window.clearActiveXrayWorkspaces = async function(){
             status: "PASS",
             cleared: views.slice(),
             storage: "live-memory-only",
+            resetStrategy: inPlaceError ? "full-iframe-reload-fallback" : "full-iframe-reload",
+            fallbackReason: inPlaceError ? (inPlaceError?.message || String(inPlaceError)) : null,
             rollbackCheckpoints: "captured in memory",
             verified
         };
     } catch (error) {
+        if (inPlaceError) {
+            error = new Error((error?.message || String(error)) + " In-place reset also failed: " + (inPlaceError?.message || String(inPlaceError)));
+        }
         const rollbackErrors = [];
         const rollbackVerified = [];
 
